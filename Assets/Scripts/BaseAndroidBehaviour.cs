@@ -21,9 +21,8 @@ public class BaseAndroidBehaviour : MonoBehaviour {
                 case LogCategoryMethodOut:
                     {
                         StringBuilder contentBuilder = new StringBuilder();
-                        string methodName = new System.Diagnostics.StackTrace().GetFrame(1).GetMethod().DeclaringType.FullName;
                         contentBuilder
-                            .Append(new System.Diagnostics.StackTrace().GetFrame(1).GetMethod().DeclaringType.FullName)
+                            .Append(new System.Diagnostics.StackTrace().GetFrame(1).GetMethod().Name)
                             .Append("(")
                             .Append(((category == LogCategoryMethodIn) ? "IN" : "OUT") + ")");
                         if (contents != null && contents.Length > 0)
