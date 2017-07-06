@@ -56,7 +56,7 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
 
     public void SetScreenTimeout(int value)
     {
-        CategoryLog(LogCategoryMethodIn);
+        CategoryLog(LogCategoryMethodIn, "value = " + value);
 
         ScreenTimeout nextScreenTimeout = GetScreenTimeout(value);
         if (nextScreenTimeout.GetValue() != Screen.sleepTimeout)
@@ -69,7 +69,7 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
 
     public void SetScreenTimeout(ScreenTimeout nextScreenTimeout)
     {
-        CategoryLog(LogCategoryMethodIn);
+        CategoryLog(LogCategoryMethodIn, "nextScreenTimeout = " + nextScreenTimeout);
 
         if (nextScreenTimeout.GetValue() != Screen.sleepTimeout)
         {
@@ -81,7 +81,7 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
 
     public void SetScreenOrientation(ScreenOrientation nextScreenOrientation)
     {
-        CategoryLog(LogCategoryMethodIn);
+        CategoryLog(LogCategoryMethodIn, "nextScreenOrientation = " + nextScreenOrientation);
 
         if (Screen.orientation != nextScreenOrientation)
         {
@@ -93,7 +93,7 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
 
     public void PushNextScene(string nextScene)
     {
-        CategoryLog(LogCategoryMethodIn);
+        CategoryLog(LogCategoryMethodIn, "nextScene = " + nextScene);
         lock (SceneStack)
         {
             if (SceneStack.Count == 0)
@@ -142,6 +142,8 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
                             {
                                 SceneManager.LoadSceneAsync(prevSceneName);
                             }
+
+                            CategoryLog(LogCategoryMethodTrace, "return to " + prevSceneName);
                         }
                         else
                         {

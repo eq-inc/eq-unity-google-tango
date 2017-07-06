@@ -1,16 +1,17 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using System.Diagnostics;
 using System.Text;
 using UnityEngine;
+using UnityEngine.UI;
 
-public class BaseAndroidBehaviour : MonoBehaviour {
+abstract public class BaseAndroidBehaviour : MonoBehaviour
+{
     internal const long LogCategorySceneControl = 0x1;
     internal const long LogCategoryMethodIn = 0x2;
     internal const long LogCategoryMethodTrace = 0x4;
     internal const long LogCategoryMethodOut = 0x8;
     public long mOutputLogCategories = 0;
-    
+
     internal void CategoryLog(long category, params object[] contents)
     {
         if ((mOutputLogCategories & category) == category)
@@ -34,7 +35,7 @@ public class BaseAndroidBehaviour : MonoBehaviour {
                             }
                         }
 
-                        UnityEngine.Debug.Log(contentBuilder.ToString());
+                        System.Diagnostics.Debug.WriteLine(contentBuilder.ToString());
                     }
                     break;
                 case LogCategoryMethodTrace:
@@ -58,7 +59,7 @@ public class BaseAndroidBehaviour : MonoBehaviour {
                             }
                         }
 
-                        UnityEngine.Debug.Log(contentBuilder.ToString());
+                        System.Diagnostics.Debug.WriteLine(contentBuilder.ToString());
                     }
                     break;
                 default:
@@ -69,10 +70,63 @@ public class BaseAndroidBehaviour : MonoBehaviour {
                         {
                             contentBuilder.Append(content);
                         }
-                        UnityEngine.Debug.Log(contentBuilder.ToString());
+                        System.Diagnostics.Debug.WriteLine(contentBuilder.ToString());
                     }
                     break;
             }
         }
+    }
+
+    internal bool SetTextInUIComponent(Component topComponent, string targetComponentName, string content)
+    {
+        bool ret = false;
+        Text targetComponent = GetTextComponent(topComponent, targetComponentName);
+
+        if (targetComponent != null)
+        {
+            try
+            {
+                targetComponent.text = content;
+                ret = true;
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogError(e); ;
+            }
+        }
+
+        return ret;
+    }
+
+    internal Text GetTextComponent(Component topComponent, string targetComponentName)
+    {
+        Text ret = null;
+        Component[] childComponents = topComponent.GetComponentsInChildren<Component>();
+
+        if (childComponents != null)
+        {
+            foreach (Component child in childComponents)
+            {
+                if (child != null)
+                {
+                    if (child.name == targetComponentName)
+                    {
+                        ret = child as Text;
+                    }
+                    // 再帰コールすると無限に入ってしまうので、再帰コールしない
+                    //else
+                    //{
+                    //    ret = GetTargetChildComponent(child, targetComponentName);
+                    //}
+
+                    if (ret != null)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return ret;
     }
 }
