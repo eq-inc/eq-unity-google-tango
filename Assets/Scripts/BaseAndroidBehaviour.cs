@@ -109,7 +109,7 @@ abstract public class BaseAndroidBehaviour : MonoBehaviour
             {
                 if (child != null)
                 {
-                    if (child.name == targetComponentName)
+                    if (child.name.CompareTo(targetComponentName) == 0)
                     {
                         ret = child as Text;
                     }

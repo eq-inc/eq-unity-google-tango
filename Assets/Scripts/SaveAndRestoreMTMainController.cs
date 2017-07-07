@@ -16,7 +16,7 @@ public class SaveAndRestoreMTMainController : MTMainController
 
     public void ButtonClicked(Object targetObject)
     {
-        if (targetObject.name.Equals("SwitchSaveAndRestoreMotionTracking"))
+        if (targetObject.name.CompareTo("SwitchSaveAndRestoreMotionTracking") == 0)
         {
             if (mSavingMotionTracking)
             {

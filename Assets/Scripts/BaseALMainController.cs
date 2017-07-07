@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections;
+﻿using Assets.Scripts;
+using System;
 using System.Collections.Generic;
 using Tango;
 using UnityEngine;
-using UnityEngine.UI;
 
 abstract public class BaseALMainController : BaseAndroidMainController, ITangoLifecycle, ITangoPose
 {
@@ -16,7 +15,9 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
     internal TangoPoseController mTangoPoseController;
     internal TangoEnums.TangoPoseStatusType mCurrentPoseStatus = TangoEnums.TangoPoseStatusType.TANGO_POSE_INVALID;
     internal int mPermissionResult = PermissionInit;
+    internal PoseDataManager mPoseDataManager;
     internal TangoPoseData mLastPoseData;
+    internal List<PoseData> mPoseList;
     public GameObject mMotionTrackingCapsule;
 
     abstract internal bool StartTangoService();
