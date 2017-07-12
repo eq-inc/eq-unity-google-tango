@@ -1,4 +1,4 @@
-﻿using Assets.Scripts;
+﻿using Eq.Unity;
 using System;
 using System.Collections.Generic;
 using Tango;
@@ -6,7 +6,7 @@ using UnityEngine;
 
 abstract public class BaseALMainController : BaseAndroidMainController, ITangoLifecycle, ITangoPose
 {
-    internal const float MinTranslateSize = 1.0f;
+    internal const float MinTranslateSize = 0.00001f;
     internal const int PermissionInit = 0;
     internal const int PermissionGranted = 1;
     internal const int PermissionDenied = -1;
@@ -16,7 +16,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
     internal TangoEnums.TangoPoseStatusType mCurrentPoseStatus = TangoEnums.TangoPoseStatusType.TANGO_POSE_INVALID;
     internal int mPermissionResult = PermissionInit;
     internal PoseDataManager mPoseDataManager;
-    internal TangoPoseData mLastPoseData;
+    internal PoseData mLastPoseData;
     internal List<PoseData> mPoseList;
     public GameObject mMotionTrackingCapsule;
 
@@ -115,8 +115,11 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             else if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE &&
                targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE)
             {
-                // Motion Tracking
-                AddTrackingGameObject(poseData);
+                if (this.GetType().FullName.CompareTo(Type.GetType("ALMainControllerForLoadExisting").FullName) != 0)  // 一時実装
+                {
+                    // Motion Tracking
+                    AddTrackingGameObject(poseData);
+                }
             }
 
         }
@@ -153,7 +156,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             Debug.LogError(e);
         }
 
-        CategoryLog(LogCategoryMethodOut, mostRecent);
+        CategoryLog(LogCategoryMethodOut, mostRecent != null ? mostRecent.ToString() : "null");
         return mostRecent;
     }
 
@@ -162,10 +165,12 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         bool needAddPoint = false;
         DVector3 trackingPositionDV3 = poseData.translation;
 
-        CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString());
         if (mLastPoseData != null)
         {
-            if (Mathf.Abs((float)(mLastPoseData.translation.Magnitude - poseData.translation.Magnitude)) > MinTranslateSize)
+            DVector3 lastTranslation = new DVector3(mLastPoseData.translateX, mLastPoseData.translateY, mLastPoseData.translateZ);
+
+            //CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", last pose data magnitude = " + lastTranslation.Magnitude + ", current pose data magnitude = " + trackingPositionDV3.Magnitude);
+            if (Mathf.Abs((float)(lastTranslation.Magnitude - trackingPositionDV3.Magnitude)) > MinTranslateSize)
             {
                 needAddPoint = true;
             }
@@ -175,6 +180,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             needAddPoint = true;
         }
 
+        CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", needAddPoint = " + needAddPoint);
         if (needAddPoint)
         {
             // Google Tango -> Unityへ座標変換(YZ -> ZY)＋少し見やすいようにYZ方向を補正
@@ -183,7 +189,19 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             Quaternion trackingOrientationQ = new Quaternion((float)trackingOrientationDV4.x, (float)trackingOrientationDV4.z, (float)trackingOrientationDV4.y, (float)trackingOrientationDV4.w);
             Instantiate(mMotionTrackingCapsule, trackingPositionV3, trackingOrientationQ).SetActive(true);
 
-            mLastPoseData = poseData;
+            DVector4 trackingOrientation = poseData.orientation;
+            if (mLastPoseData == null)
+            {
+                mLastPoseData = new PoseData();
+            }
+            mLastPoseData.timestamp = poseData.timestamp;
+            mLastPoseData.translateX = trackingPositionDV3.x;
+            mLastPoseData.translateY = trackingPositionDV3.y;
+            mLastPoseData.translateZ = trackingPositionDV3.z;
+            mLastPoseData.orientateX = trackingOrientation.x;
+            mLastPoseData.orientateY = trackingOrientation.y;
+            mLastPoseData.orientateZ = trackingOrientation.z;
+            mLastPoseData.orientateW = trackingOrientation.w;
         }
     }
 }

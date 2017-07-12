@@ -1,6 +1,7 @@
-﻿using Assets.Scripts;
+﻿using Eq.Unity;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Tango;
 using UnityEngine;
 
@@ -24,6 +25,7 @@ public class ALMainControllerForLoadExisting : BaseALMainController
             ret = false;
         }
 
+        mPoseDataManager.EnableDebugLog((mLogger.GetOutputLogCategory() & LogCategoryMethodTrace) == LogCategoryMethodTrace);
         CategoryLog(LogCategoryMethodOut, "ret = " + ret);
         return ret;
     }
@@ -38,6 +40,7 @@ public class ALMainControllerForLoadExisting : BaseALMainController
     private class LoadPoseDataCallback : CallbackAsncTask<string, int, List<PoseData>>.IResultCallback
     {
         private BaseALMainController mController;
+        private string mRootDataPath;
 
         public LoadPoseDataCallback(BaseALMainController controller)
         {
@@ -51,7 +54,11 @@ public class ALMainControllerForLoadExisting : BaseALMainController
 
         void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnPreExecute()
         {
-            // 処理なし
+#if UNITY_EDITOR
+            mRootDataPath = Directory.GetCurrentDirectory();
+#else
+            mRootDataPath = Application.persistentDataPath;
+#endif
         }
 
         void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnProgressUpdate(params int[] values)
@@ -66,7 +73,7 @@ public class ALMainControllerForLoadExisting : BaseALMainController
 
         List<PoseData> CallbackAsncTask<string, int, List<PoseData>>.ICallback.DoInBackground(params string[] parameters)
         {
-            List<PoseData> ret = mController.mPoseDataManager.Load(PoseDataManager.TypeAreaLearning);
+            List<PoseData> ret = mController.mPoseDataManager.Load(mRootDataPath, PoseDataManager.TypeAreaLearning);
 
             if (ret != null && ret.Count > 0)
             {

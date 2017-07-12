@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
-namespace Assets.Scripts
+namespace Eq.Unity
 {
     class PoseDataManager
     {
@@ -25,7 +25,7 @@ namespace Assets.Scripts
                     uuid = cTemporaryPoseDataManagerUuid;
                 }
 
-                if(sPoseDataManagerDictionary.TryGetValue(uuid, out ret) == false)
+                if (sPoseDataManagerDictionary.TryGetValue(uuid, out ret) == false)
                 {
                     ret = new PoseDataManager(uuid);
                     sPoseDataManagerDictionary[uuid] = ret;
@@ -42,6 +42,7 @@ namespace Assets.Scripts
         private string mUuid;
         private bool mTemporary = false;
         private Dictionary<string, List<PoseData>> mPoseDataListPerType = new Dictionary<string, List<PoseData>>();
+        private Eq.Util.LogController mLogger = new Eq.Util.LogController();
 
         private PoseDataManager(string uuid)
         {
@@ -56,13 +57,29 @@ namespace Assets.Scripts
             mUuid = uuid;
         }
 
+        public void EnableDebugLog(bool enableDebugLog)
+        {
+            if (enableDebugLog)
+            {
+                mLogger.SetOutputLogCategory(Eq.Util.LogController.LogCategoryMethodIn | Eq.Util.LogController.LogCategoryMethodOut | Eq.Util.LogController.LogCategoryMethodTrace);
+            }
+            else
+            {
+                mLogger.SetOutputLogCategory(0);
+            }
+        }
+
         public bool IsTemporary()
         {
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn);
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut, "mTemporary = " + mTemporary);
             return mTemporary;
         }
 
         public bool SetUuid(String uuid)
         {
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn, "mTemporary = " + mTemporary + ", next uuid = " + uuid);
+
             bool ret = false;
 
             if (mTemporary && cTemporaryPoseDataManagerUuid.CompareTo(uuid) != 0)
@@ -78,37 +95,27 @@ namespace Assets.Scripts
                 mUuid = uuid;
             }
 
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut, "ret = " + ret);
             return ret;
         }
 
-        public List<PoseData> Load(string type)
+        public List<PoseData> Load(String rootDataPath, string type)
         {
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn, "mTemporary = " + mTemporary);
             List<PoseData> ret = null;
 
-            if (!mTemporary) { 
-}
             lock (mPoseDataListPerType)
             {
-                if(mPoseDataListPerType.TryGetValue(type, out ret) == false)
+                if (mPoseDataListPerType.TryGetValue(type, out ret) == false)
                 {
-                    if (mTemporary)
+                    if (!mTemporary)
                     {
-                        // 一時インスタンスのため、ファイル保存していないため、そのままインスタンス管理のみ実施
-                        mPoseDataListPerType[type] = ret = new List<PoseData>();
-                    }
-                    else
-                    {
-                        string rootDataPath;
-
-#if UNITY_EDITOR
-                        rootDataPath = Directory.GetCurrentDirectory();
-#else
-                        rootDataPath = Application.persistentDataPath;
-#endif
                         StringBuilder pathBuilder = new StringBuilder(rootDataPath).Append(Path.DirectorySeparatorChar).Append(mUuid);
-                        if (Directory.Exists(pathBuilder.ToString()))
+                        String directoryPath = pathBuilder.ToString();
+                        mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodTrace, "path = " + directoryPath);
+                        if (Directory.Exists(directoryPath))
                         {
-                            string[] filesInUuidDir = Directory.GetFiles(pathBuilder.ToString());
+                            string[] filesInUuidDir = Directory.GetFiles(directoryPath);
                             if (filesInUuidDir != null && filesInUuidDir.Count() > 0)
                             {
                                 foreach (string fileInUuidDir in filesInUuidDir)
@@ -131,36 +138,38 @@ namespace Assets.Scripts
                             }
                         }
                     }
+
+                    if(ret == null)
+                    {
+                        // 一時インスタンスのため、ファイル保存していないため、そのままインスタンス管理のみ実施
+                        mPoseDataListPerType[type] = ret = new List<PoseData>();
+                    }
                 }
             }
 
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut, "ret = " + ret);
             return ret;
         }
 
-        public bool Save(string type)
+        public bool Save(String rootDataPath, string type)
         {
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn, "mTemporary = " + mTemporary);
             bool ret = false;
 
             if (!mTemporary)
             {
-                string rootDataPath;
-
-#if UNITY_EDITOR
-                rootDataPath = Directory.GetCurrentDirectory();
-#else
-                rootDataPath = Application.persistentDataPath;
-#endif
                 StringBuilder pathBuilder = new StringBuilder(rootDataPath).Append(Path.DirectorySeparatorChar).Append(mUuid);
+                String directoryPath = pathBuilder.ToString();
 
-                if (!Directory.Exists(pathBuilder.ToString()))
+                if (!Directory.Exists(directoryPath))
                 {
-                    Directory.CreateDirectory(pathBuilder.ToString());
+                    Directory.CreateDirectory(directoryPath);
                 }
 
-                if (Directory.Exists(pathBuilder.ToString()))
+                if (Directory.Exists(directoryPath))
                 {
                     List<PoseData> poseDataList = null;
-                    if(mPoseDataListPerType.TryGetValue(type, out poseDataList))
+                    if (mPoseDataListPerType.TryGetValue(type, out poseDataList))
                     {
                         pathBuilder.Append(Path.DirectorySeparatorChar).Append(String.Format(cJsonFileNameFmt, type));
                         ToJson<List<PoseData>>(pathBuilder.ToString(), poseDataList);
@@ -176,23 +185,27 @@ namespace Assets.Scripts
                 Debug.LogError("cannot save, because this pose data manager is still temporary. call again after it sets uuid");
             }
 
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut, "ret = " + ret);
             return ret;
         }
 
-        public Dictionary<string, bool> SaveAll()
+        public Dictionary<string, bool> SaveAll(String rootDataPath)
         {
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn);
             Dictionary<string, bool> ret = new Dictionary<string, bool>();
 
             foreach (string type in mPoseDataListPerType.Keys)
             {
-                ret[type] = Save(type);
+                ret[type] = Save(rootDataPath, type);
             }
 
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut);
             return ret;
         }
 
         internal T FromJson<T>(String filePath)
         {
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn);
             StreamReader reader = new StreamReader(filePath);
             StringBuilder jsonBuilder = new StringBuilder();
             char[] readBuffer = new char[8 * 1024];
@@ -210,11 +223,13 @@ namespace Assets.Scripts
                 }
             }
 
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut, "json = " + jsonBuilder.ToString());
             return JsonUtility.FromJson<T>(jsonBuilder.ToString());
         }
 
         internal bool ToJson<T>(String filePath, T targetObject)
         {
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn);
             bool ret = true;
             StreamWriter writer = null;
 
@@ -236,6 +251,7 @@ namespace Assets.Scripts
                 }
             }
 
+            mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut);
             return ret;
         }
     }

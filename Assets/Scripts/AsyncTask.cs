@@ -1,14 +1,25 @@
-﻿using System.Collections;
+﻿using Eq.Util;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using UnityEngine;
 
-namespace Assets.Scripts
+namespace Eq.Unity
 {
-    abstract public class AsyncTask<Param, Progress, Result> : BaseAndroidBehaviour
+    class AsyncTaskComponent : BaseAndroidBehaviour
     {
+        // 処理なし
+    }
+
+    abstract public class AsyncTask<Param, Progress, Result>
+    {
+        private static GameObject sGlobalGameObject;
+        private static AsyncTaskComponent sGlobalComponent;
+        private static System.Object sMutex = new System.Object();
+
         private Thread mWorkThread;
         private Param[] mParameters;
         private Result mResult;
@@ -16,33 +27,48 @@ namespace Assets.Scripts
         private bool mFinished = false;
         private ManualResetEvent mEvent = new ManualResetEvent(false);
         private Queue<Progress[]> mProgressValueQueue;
+        internal LogController mLogger = new LogController();
 
         abstract internal Result DoInBackground(params Param[] parameters);
 
+        public void EnableDebugLog(bool enableDebugLog)
+        {
+            mLogger.SetOutputLogCategory(enableDebugLog ? (LogController.LogCategoryMethodIn | LogController.LogCategoryMethodOut | LogController.LogCategoryMethodTrace) : 0);
+        }
+
         public void Execute(params Param[] parameters)
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
+
             if (mWorkThread == null)
             {
+                mLogger.CategoryLog(LogController.LogCategoryMethodTrace, "call OnPreExecute");
                 OnPreExecute();
                 mWorkThread = new Thread(this.ParameterizedThreadStart);
+                mLogger.CategoryLog(LogController.LogCategoryMethodTrace, "start work thread");
                 mWorkThread.Start(parameters);
 
                 StartCoroutine(Looper());
             }
+
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
         }
 
         public void Cancel()
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
             mCanceled = true;
 
             if (!mFinished)
             {
                 mWorkThread.Abort();
             }
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
         }
 
         public Result Get()
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
             mEvent.Reset();
             if (!mFinished)
             {
@@ -50,21 +76,53 @@ namespace Assets.Scripts
             }
             mEvent.Set();
 
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut, mResult);
             return mResult;
         }
 
         public bool IsCanceled()
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut, mCanceled);
             return mCanceled;
+        }
+
+        private void StartCoroutine(IEnumerator enumerator)
+        {
+            lock (sMutex)
+            {
+                if(sGlobalGameObject == null)
+                {
+                    sGlobalGameObject = new GameObject();
+                    sGlobalGameObject.name = "GlobalGameObject_for_AsyncTask";
+                    sGlobalComponent = sGlobalGameObject.AddComponent<AsyncTaskComponent>();
+                }
+                sGlobalComponent.StartCoroutine(enumerator);
+            }
+        }
+
+        private void DestroyComponent()
+        {
+            lock (sMutex)
+            {
+                if(sGlobalGameObject != null)
+                {
+                    UnityEngine.Object.Destroy(sGlobalGameObject);
+                    sGlobalGameObject = null;
+                    sGlobalComponent = null;
+                }
+            }
         }
 
         private void ParameterizedThreadStart(object obj)
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
             mEvent.Reset();
             mParameters = (Param[])obj;
             mResult = DoInBackground(mParameters);
             mFinished = true;
             mEvent.Set();
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
         }
 
         internal virtual void OnCancelled()
@@ -104,6 +162,7 @@ namespace Assets.Scripts
 
         private IEnumerator Looper()
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
             while (!mFinished)
             {
                 yield return OnProgressUpdateForCoroutine();
@@ -126,33 +185,51 @@ namespace Assets.Scripts
                 yield return OnPostExecuteForCoroutine(mResult, mParameters);
             }
 
-            yield break;
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
+            yield return DestroyComponentForCoroutine();
         }
 
         private System.Object OnProgressUpdateForCoroutine()
         {
-            while (mProgressValueQueue.Count > 0)
+            if(mProgressValueQueue != null)
             {
-                OnProgressUpdate(mProgressValueQueue.Dequeue());
+                while (mProgressValueQueue.Count > 0)
+                {
+                    OnProgressUpdate(mProgressValueQueue.Dequeue());
+                }
             }
             return new System.Object();
         }
 
         private System.Object OnCancelledForCoroutine()
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
             OnCancelled();
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
             return new System.Object();
         }
 
         private System.Object OnCancelledForCoroutine(Result result, params Param[] parameters)
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
             OnCancelled(result, parameters);
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
             return new System.Object();
         }
 
         private System.Object OnPostExecuteForCoroutine(Result result, params Param[] parameters)
         {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
             OnPostExecute(result, parameters);
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
+            return new System.Object();
+        }
+
+        private System.Object DestroyComponentForCoroutine()
+        {
+            mLogger.CategoryLog(LogController.LogCategoryMethodIn);
+            DestroyComponent();
+            mLogger.CategoryLog(LogController.LogCategoryMethodOut);
             return new System.Object();
         }
     }
@@ -163,9 +240,9 @@ namespace Assets.Scripts
 
         public CallbackAsncTask(ICallback callback)
         {
-            if (mCallback == null)
+            if (callback == null)
             {
-                throw new System.ArgumentNullException();
+                throw new ArgumentNullException();
             }
             mCallback = callback;
         }
