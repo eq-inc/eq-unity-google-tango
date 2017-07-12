@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class SaveAndRestoreMTMainController : MTMainController
+public class ControllableMTMainController : MTMainController
 {
     private bool mSavingMotionTracking = false;
     public Text mSwitchSaveMotionTrackingButtonText = null;
