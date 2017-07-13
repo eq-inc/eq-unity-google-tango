@@ -5,34 +5,58 @@ namespace Eq.Util
 {
     public class LogController
     {
-        internal const long LogCategoryMethodIn = 0x2;
-        internal const long LogCategoryMethodTrace = 0x4;
-        internal const long LogCategoryMethodOut = 0x8;
-        public long mOutputLogCategories = 0;
+        public const System.Int64 LogCategoryMethodIn = 0x0000000000000001 << 1;
+        public const System.Int64 LogCategoryMethodTrace = 0x0000000000000001 << 2;
+        public const System.Int64 LogCategoryMethodOut = 0x0000000000000001 << 3;
+        public const System.Int64 LogCategoryMethodError = 0x0000000000000001 << 63;
+        public System.Int64 mOutputLogCategories = 0;
 
-        public void AppendOutputLogCategory(long outputLogCategories)
+        public void AppendOutputLogCategory(System.Int64 outputLogCategories)
         {
             mOutputLogCategories |= outputLogCategories;
         }
 
-        public void RemoveOutputLogCategory(long outputLogCategories)
+        public void RemoveOutputLogCategory(System.Int64 outputLogCategories)
         {
             mOutputLogCategories &= (~outputLogCategories);
         }
 
-        public void SetOutputLogCategory(long outputLogCategories)
+        public void SetOutputLogCategory(System.Int64 outputLogCategories)
         {
             mOutputLogCategories = outputLogCategories;
         }
 
-        public long GetOutputLogCategory()
+        public System.Int64 GetOutputLogCategory()
         {
             return mOutputLogCategories;
         }
 
-        public void CategoryLog(long category, params object[] contents)
+        public void CategoryLog(System.Int64 category, params object[] contents)
         {
-            //if ((mOutputLogCategories & category) == category)
+            if (category == LogCategoryMethodError)
+            {
+                StringBuilder contentBuilder = new StringBuilder();
+                StackFrame lastStackFrame = new StackTrace(true).GetFrame(1);
+
+                contentBuilder
+                    .Append(lastStackFrame.GetMethod())
+                    .Append("(")
+                    .Append(System.IO.Path.GetFileName(lastStackFrame.GetFileName()))
+                    .Append(":")
+                    .Append(lastStackFrame.GetFileLineNumber())
+                    .Append(")");
+                if (contents != null && contents.Length > 0)
+                {
+                    contentBuilder.Append(": ");
+                    foreach (object content in contents)
+                    {
+                        contentBuilder.Append(content);
+                    }
+                }
+
+                UnityEngine.Debug.Log(contentBuilder.ToString());
+            }
+            else if ((mOutputLogCategories & category) == category)
             {
                 switch (category)
                 {
@@ -40,10 +64,15 @@ namespace Eq.Util
                     case LogCategoryMethodOut:
                         {
                             StringBuilder contentBuilder = new StringBuilder();
+                            StackFrame lastStackFrame = new StackTrace(true).GetFrame(1);
                             contentBuilder
-                                .Append(new StackTrace().GetFrame(1).GetMethod().Name)
+                                .Append(lastStackFrame.GetMethod())
                                 .Append("(")
-                                .Append(((category == LogCategoryMethodIn) ? "IN" : "OUT") + ")");
+                                .Append(lastStackFrame.GetFileName())
+                                .Append(":")
+                                .Append(lastStackFrame.GetFileLineNumber())
+                                .Append(")")
+                                .Append((category == LogCategoryMethodIn) ? "(IN)" : "(OUT)");
                             if (contents != null && contents.Length > 0)
                             {
                                 contentBuilder.Append(": ");
@@ -52,8 +81,7 @@ namespace Eq.Util
                                     contentBuilder.Append(content);
                                 }
                             }
-
-                            Debug.WriteLine(contentBuilder.ToString());
+                            UnityEngine.Debug.Log(contentBuilder.ToString());
                         }
                         break;
                     case LogCategoryMethodTrace:
@@ -88,7 +116,7 @@ namespace Eq.Util
                             {
                                 contentBuilder.Append(content);
                             }
-                            Debug.WriteLine(contentBuilder.ToString());
+                            UnityEngine.Debug.Log(contentBuilder.ToString());
                         }
                         break;
                 }
