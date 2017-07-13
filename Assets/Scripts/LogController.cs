@@ -65,14 +65,17 @@ namespace Eq.Util
                         {
                             StringBuilder contentBuilder = new StringBuilder();
                             StackFrame lastStackFrame = new StackTrace(true).GetFrame(1);
-                            contentBuilder
-                                .Append(lastStackFrame.GetMethod())
-                                .Append("(")
-                                .Append(lastStackFrame.GetFileName())
-                                .Append(":")
-                                .Append(lastStackFrame.GetFileLineNumber())
-                                .Append(")")
-                                .Append((category == LogCategoryMethodIn) ? "(IN)" : "(OUT)");
+                            contentBuilder.Append(lastStackFrame.GetMethod());
+                            if (!string.IsNullOrEmpty(lastStackFrame.GetFileName()))
+                            {
+                                contentBuilder.Append("(")
+                                                .Append(lastStackFrame.GetFileName())
+                                                .Append(":")
+                                                .Append(lastStackFrame.GetFileLineNumber())
+                                                .Append(")");
+                            }
+                            contentBuilder.Append((category == LogCategoryMethodIn) ? "(IN)" : "(OUT)");
+
                             if (contents != null && contents.Length > 0)
                             {
                                 contentBuilder.Append(": ");
