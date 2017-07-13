@@ -13,7 +13,7 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
 
     internal override void OnEnable()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         base.OnEnable();
 
         SetScreenTimeout(BaseAndroidMainController.NeverSleep);
@@ -24,12 +24,12 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
         //     or
         //PoseListener.RegisterTangoPoseAvailable(new OnTangoPoseAvailableEventHandler(OnTangoPoseAvailable));
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     internal override void OnDisable()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         base.OnDisable();
 
         // 今はコールバックが不要なので、コメントアウト
@@ -37,19 +37,19 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
         //     or
         //PoseListener.UnregisterTangoPoseAvailable(new OnTangoPoseAvailableEventHandler(OnTangoPoseAvailable));
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     internal override void Start()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         base.Start();
 
         mFramePair = new TangoCoordinateFramePair();
         mFramePair.baseFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE;
         mFramePair.targetFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE;
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     internal override void Update()
@@ -75,7 +75,7 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
 
         int size = mPoseList.Count;
         DVector3 trackingPositionDV3 = poseData.mPoseData.translation;
-        CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString());
+        mLogger.CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString());
 
         bool needAddPoint = false;
         if (mLastQueuedPoseData == null)
@@ -93,9 +93,9 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
         if (needAddPoint)
         {
             // Google Tango -> Unityへ座標変換(YZ -> ZY)＋少し見やすいようにYZ方向を補正
-            Vector3 trackingPositionV3 = new Vector3((float)trackingPositionDV3.x, (float)trackingPositionDV3.z + 0.1f, (float)trackingPositionDV3.y + 0.1f);
-            DVector4 trackingOrientationDV4 = poseData.mPoseData.orientation;
-            Quaternion trackingOrientationQ = new Quaternion((float)trackingOrientationDV4.x, (float)trackingOrientationDV4.z, (float)trackingOrientationDV4.y, (float)trackingOrientationDV4.w);
+            Vector3 trackingPositionV3 = new Vector3();
+            Quaternion trackingOrientationQ = new Quaternion();
+            TangoSupport.TangoPoseToWorldTransform(poseData.mPoseData, out trackingPositionV3, out trackingOrientationQ);
             poseData.mPoseObject = Instantiate(mMotionTrackingCapsule, trackingPositionV3, trackingOrientationQ);
             poseData.mPoseObject.SetActive(true);
 
@@ -108,8 +108,8 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
     {
         // ITangoPoseを実装した上で、TangoApplication.Registerをコールすることでコールバックされるようになる。
         // またはPoseListener.RegisterTangoPoseAvailable(new OnTangoPoseAvailableEventHandler(OnTangoPoseAvailable))することでコールバックされるようになる。
-        CategoryLog(LogCategoryMethodIn, poseData);
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodIn, poseData);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     internal class InternalPoseData

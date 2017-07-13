@@ -11,14 +11,14 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
 
     internal override bool StartTangoService()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         bool ret = true;
 
         if (!mLearningArea)
         {
             AreaDescription mostRecentAreaDescription = GetMostRecentAreaDescription();
 
-            CategoryLog(LogCategoryMethodTrace, "Area Learning = " + mTangoApplication.m_enableAreaLearning + ", area description learning mode = " + mTangoApplication.m_areaDescriptionLearningMode + ", ADFLoading = " + mTangoApplication.m_enableADFLoading + ", EnableAreaDescriptions = " + mTangoApplication.EnableAreaDescriptions);
+            mLogger.CategoryLog(LogCategoryMethodTrace, "Area Learning = " + mTangoApplication.m_enableAreaLearning + ", area description learning mode = " + mTangoApplication.m_areaDescriptionLearningMode + ", ADFLoading = " + mTangoApplication.m_enableADFLoading + ", EnableAreaDescriptions = " + mTangoApplication.EnableAreaDescriptions);
             mTangoApplication.m_areaDescriptionLearningMode = true;
             if (mostRecentAreaDescription != null)
             {
@@ -43,13 +43,13 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
             ret = false;
         }
 
-        CategoryLog(LogCategoryMethodOut, "ret = " + ret);
+        mLogger.CategoryLog(LogCategoryMethodOut, "ret = " + ret);
         return ret;
     }
 
     internal override bool StopTangoService()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         bool ret = true;
 
         if (mLearningArea)
@@ -65,7 +65,7 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
             ret = false;
         }
 
-        CategoryLog(LogCategoryMethodOut, "ret = " + ret);
+        mLogger.CategoryLog(LogCategoryMethodOut, "ret = " + ret);
         return ret;
     }
 
@@ -175,7 +175,7 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
         if (tangoEvent.type == TangoEnums.TangoEventType.TANGO_EVENT_AREA_LEARNING
             && tangoEvent.event_key == "AreaDescriptionSaveProgress")
         {
-            CategoryLog(LogCategoryMethodTrace, "Saving AreaLearned: " + (float.Parse(tangoEvent.event_value) * 100) + "%");
+            mLogger.CategoryLog(LogCategoryMethodTrace, "Saving AreaLearned: " + (float.Parse(tangoEvent.event_value) * 100) + "%");
         }
     }
 }

@@ -9,7 +9,7 @@ public class ALMainControllerForLoadExisting : BaseALMainController
 {
     internal override bool StartTangoService()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         bool ret = true;
         AreaDescription mostRecentAreaDescription = GetMostRecentAreaDescription();
 
@@ -26,7 +26,7 @@ public class ALMainControllerForLoadExisting : BaseALMainController
         }
 
         mPoseDataManager.EnableDebugLog((mLogger.GetOutputLogCategory() & LogCategoryMethodTrace) == LogCategoryMethodTrace);
-        CategoryLog(LogCategoryMethodOut, "ret = " + ret);
+        mLogger.CategoryLog(LogCategoryMethodOut, "ret = " + ret);
         return ret;
     }
 
