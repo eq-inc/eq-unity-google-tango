@@ -17,6 +17,9 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
         mLogger.CategoryLog(LogCategoryMethodIn);
         base.Start();
 
+        SetScreenTimeout(BaseAndroidMainController.NeverSleep);
+        SetScreenOrientation(ScreenOrientation.Portrait);
+
         mTangoApplication = FindObjectOfType<TangoApplication>();
         if(mTangoApplication != null)
         {
