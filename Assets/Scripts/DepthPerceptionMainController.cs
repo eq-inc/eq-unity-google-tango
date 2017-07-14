@@ -6,9 +6,7 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
 {
     internal TangoApplication mTangoApplication;
     internal TangoPointCloud mTangoPointCloud;
-    internal TangoPoseController mTangoPoseController;
     internal System.Collections.Generic.Dictionary<UnityEngine.Plane, GameObject> mPlaneObjectTable = new System.Collections.Generic.Dictionary<UnityEngine.Plane, GameObject>();
-    internal bool mUpdatedDepthPerception = false;
     public GameObject mPlaneBase;
 
     // Use this for initialization
@@ -27,14 +25,6 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
             mTangoApplication.Register(this);
             mTangoApplication.RequestPermissions();
         }
-
-        mTangoPointCloud = FindObjectOfType<TangoPointCloud>();
-        if (mTangoPointCloud != null)
-        {
-            mTangoPointCloud.Start();
-        }
-
-        mTangoPoseController = FindObjectOfType<TangoPoseController>();
 
         mLogger.CategoryLog(LogCategoryMethodOut);
     }
@@ -58,6 +48,12 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
         mLogger.CategoryLog(LogCategoryMethodIn);
         if (permissionsGranted)
         {
+            mTangoPointCloud = FindObjectOfType<TangoPointCloud>();
+            if (mTangoPointCloud != null)
+            {
+                mTangoPointCloud.Start();
+            }
+
             mTangoApplication.Startup(null);
         }
         else
@@ -122,7 +118,6 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
                     forward = Vector3.Cross(up, camera.transform.right);
                 }
 
-                // 
                 /*
                  * タッチされた場所の深度を測定して、そこのplaneに合うplaneを表示しようとしているけど、スクリーン座標のタッチ座標はZ軸方向の値が存在しない。
                  * その状態でCamera.ScreenToWorldPointを実行するとXY座標もずれてしまうので、見つかったplaneの中心座標(ワールド座標)をスクリーン座標化し、
