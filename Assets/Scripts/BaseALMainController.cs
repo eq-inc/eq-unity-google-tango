@@ -25,7 +25,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
 
     internal override void Start()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         base.Start();
 
         mTangoApplication = FindObjectOfType<TangoApplication>();
@@ -35,19 +35,19 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             mTangoApplication.RequestPermissions();
         }
         mTangoPoseController = FindObjectOfType<TangoPoseController>();
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     internal override void OnEnable()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         base.OnEnable();
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     internal override void OnDisable()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         base.OnDisable();
 
         if (mTangoApplication != null)
@@ -56,16 +56,16 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             StopTangoService();
         }
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public virtual void OnTangoPermissions(bool permissionsGranted)
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         if (permissionsGranted)
         {
             mPermissionResult = PermissionGranted;
-            CategoryLog(LogCategoryMethodTrace, "Permission = " + permissionsGranted + ", mCurrentPoseStatus = " + mCurrentPoseStatus);
+            mLogger.CategoryLog(LogCategoryMethodTrace, "Permission = " + permissionsGranted + ", mCurrentPoseStatus = " + mCurrentPoseStatus);
             if (!StartTangoService())
             {
                 this.Back();
@@ -77,19 +77,19 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             mPermissionResult = PermissionDenied;
             this.Back();
         }
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void OnTangoServiceConnected()
     {
-        CategoryLog(LogCategoryMethodIn);
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void OnTangoServiceDisconnected()
     {
-        CategoryLog(LogCategoryMethodIn);
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void OnTangoPoseAvailable(TangoPoseData poseData)
@@ -99,7 +99,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             TangoEnums.TangoCoordinateFrameType baseFrame = poseData.framePair.baseFrame;
             TangoEnums.TangoCoordinateFrameType targetFrame = poseData.framePair.targetFrame;
 
-            CategoryLog(LogCategoryMethodTrace, "base = " + baseFrame + ", target = " + targetFrame);
+            mLogger.CategoryLog(LogCategoryMethodTrace, "base = " + baseFrame + ", target = " + targetFrame);
             if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_AREA_DESCRIPTION &&
                  targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE)
             {
@@ -127,7 +127,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
 
     internal AreaDescription GetMostRecentAreaDescription()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
 
         AreaDescription mostRecent = null;
 
@@ -156,7 +156,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             Debug.LogError(e);
         }
 
-        CategoryLog(LogCategoryMethodOut, mostRecent != null ? mostRecent.ToString() : "null");
+        mLogger.CategoryLog(LogCategoryMethodOut, mostRecent != null ? mostRecent.ToString() : "null");
         return mostRecent;
     }
 
@@ -169,7 +169,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         {
             DVector3 lastTranslation = new DVector3(mLastPoseData.translateX, mLastPoseData.translateY, mLastPoseData.translateZ);
 
-            //CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", last pose data magnitude = " + lastTranslation.Magnitude + ", current pose data magnitude = " + trackingPositionDV3.Magnitude);
+            //mLogger.CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", last pose data magnitude = " + lastTranslation.Magnitude + ", current pose data magnitude = " + trackingPositionDV3.Magnitude);
             if (Mathf.Abs((float)(lastTranslation.Magnitude - trackingPositionDV3.Magnitude)) > MinTranslateSize)
             {
                 needAddPoint = true;
@@ -180,7 +180,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             needAddPoint = true;
         }
 
-        CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", needAddPoint = " + needAddPoint);
+        mLogger.CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", needAddPoint = " + needAddPoint);
         if (needAddPoint)
         {
             // Google Tango -> Unityへ座標変換(YZ -> ZY)＋少し見やすいようにYZ方向を補正

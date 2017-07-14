@@ -7,16 +7,16 @@ using UnityEngine.UI;
 
 abstract public class BaseAndroidBehaviour : MonoBehaviour
 {
-    internal const long LogCategoryMethodIn = LogController.LogCategoryMethodIn;
-    internal const long LogCategoryMethodTrace = LogController.LogCategoryMethodTrace;
-    internal const long LogCategoryMethodOut = LogController.LogCategoryMethodOut;
-    public long mOutputLogCategories = 0;
+    internal const System.Int64 LogCategoryMethodIn = LogController.LogCategoryMethodIn;
+    internal const System.Int64 LogCategoryMethodTrace = LogController.LogCategoryMethodTrace;
+    internal const System.Int64 LogCategoryMethodOut = LogController.LogCategoryMethodOut;
+    internal const System.Int64 LogCategoryMethodError = LogController.LogCategoryMethodError;
+    public System.Int64 mOutputLogCategories = 0;
     internal LogController mLogger = new LogController();
 
-    internal void CategoryLog(long category, params object[] contents)
+    internal virtual void OnEnable()
     {
         mLogger.SetOutputLogCategory(mOutputLogCategories);
-        mLogger.CategoryLog(category, contents);
     }
 
     internal bool SetTextInUIComponent(Component topComponent, string targetComponentName, string content)

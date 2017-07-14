@@ -24,7 +24,7 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
 
     public ScreenTimeout GetScreenTimeout(int value)
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         ScreenTimeout ret = null;
 
         switch (value)
@@ -40,23 +40,23 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
                 break;
         }
 
-        CategoryLog(LogCategoryMethodOut, ret);
+        mLogger.CategoryLog(LogCategoryMethodOut, ret);
         return ret;
     }
 
     public ScreenTimeout GetCurrentScreenTimeout()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
 
         ScreenTimeout ret = GetScreenTimeout(Screen.sleepTimeout);
 
-        CategoryLog(LogCategoryMethodOut, ret);
+        mLogger.CategoryLog(LogCategoryMethodOut, ret);
         return ret;
     }
 
     public void SetScreenTimeout(int value)
     {
-        CategoryLog(LogCategoryMethodIn, "value = " + value);
+        mLogger.CategoryLog(LogCategoryMethodIn, "value = " + value);
 
         ScreenTimeout nextScreenTimeout = GetScreenTimeout(value);
         if (nextScreenTimeout.GetValue() != Screen.sleepTimeout)
@@ -64,54 +64,54 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
             Screen.sleepTimeout = value;
         }
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void SetScreenTimeout(ScreenTimeout nextScreenTimeout)
     {
-        CategoryLog(LogCategoryMethodIn, "nextScreenTimeout = " + nextScreenTimeout);
+        mLogger.CategoryLog(LogCategoryMethodIn, "nextScreenTimeout = " + nextScreenTimeout);
 
         if (nextScreenTimeout.GetValue() != Screen.sleepTimeout)
         {
             Screen.sleepTimeout = nextScreenTimeout.GetValue();
         }
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void SetScreenOrientation(ScreenOrientation nextScreenOrientation)
     {
-        CategoryLog(LogCategoryMethodIn, "nextScreenOrientation = " + nextScreenOrientation);
+        mLogger.CategoryLog(LogCategoryMethodIn, "nextScreenOrientation = " + nextScreenOrientation);
 
         if (Screen.orientation != nextScreenOrientation)
         {
             Screen.orientation = nextScreenOrientation;
         }
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void PushNextScene(string nextScene)
     {
-        CategoryLog(LogCategoryMethodIn, "nextScene = " + nextScene);
+        mLogger.CategoryLog(LogCategoryMethodIn, "nextScene = " + nextScene);
         lock (SceneStack)
         {
             if (SceneStack.Count == 0)
             {
                 // 「最初のシーンからの別のシーン起動」が初めて発生したケースなので、このときに最初のシーンをstackに登録
-                CategoryLog(LogCategoryMethodTrace, "push first scene: " + SceneManager.GetActiveScene().name);
+                mLogger.CategoryLog(LogCategoryMethodTrace, "push first scene: " + SceneManager.GetActiveScene().name);
                 SceneStack.Push(SceneManager.GetActiveScene().name);
             }
 
             SceneStack.Push(nextScene);
             SceneManager.LoadSceneAsync(nextScene);
         }
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void PopCurrentScene()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
         bool quitApplication = false;
 
         lock (SceneStack)
@@ -125,7 +125,7 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
 
                     if (SceneStack.Count == 0)
                     {
-                        CategoryLog(LogCategoryMethodTrace);
+                        mLogger.CategoryLog(LogCategoryMethodTrace);
                         quitApplication = true;
                     }
                     else
@@ -143,35 +143,35 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
                                 SceneManager.LoadSceneAsync(prevSceneName);
                             }
 
-                            CategoryLog(LogCategoryMethodTrace, "return to " + prevSceneName);
+                            mLogger.CategoryLog(LogCategoryMethodTrace, "return to " + prevSceneName);
                         }
                         else
                         {
-                            CategoryLog(LogCategoryMethodTrace);
+                            mLogger.CategoryLog(LogCategoryMethodTrace);
                             quitApplication = true;
                         }
                     }
                 }
                 else
                 {
-                    CategoryLog(LogCategoryMethodTrace);
+                    mLogger.CategoryLog(LogCategoryMethodTrace);
                     quitApplication = true;
                 }
             }
             else
             {
-                CategoryLog(LogCategoryMethodTrace);
+                mLogger.CategoryLog(LogCategoryMethodTrace);
                 quitApplication = true;
             }
         }
 
         if (quitApplication)
         {
-            CategoryLog(LogCategoryMethodTrace, "BaseAndroidMainController.PopCurrentScene: call Application.Quit()");
+            mLogger.CategoryLog(LogCategoryMethodTrace, "BaseAndroidMainController.PopCurrentScene: call Application.Quit()");
             Application.Quit();
         }
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     private ScreenTimeout mBeforeScreenTimeout = null;
@@ -179,8 +179,8 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
 
     internal virtual void Start()
     {
-        CategoryLog(LogCategoryMethodIn);
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     // Update is called once per frame
@@ -193,7 +193,7 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
             {
                 if (!Back())
                 {
-                    CategoryLog(LogCategoryMethodTrace, "call Application.Quit");
+                    mLogger.CategoryLog(LogCategoryMethodTrace, "call Application.Quit");
                     Application.Quit();
                     return;
                 }
@@ -201,31 +201,32 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
         }
     }
 
-    virtual internal void OnEnable()
+    override internal void OnEnable()
     {
-        CategoryLog(LogCategoryMethodIn);
+        base.OnEnable();
+        mLogger.CategoryLog(LogCategoryMethodIn);
 
         mBeforeScreenTimeout = GetScreenTimeout(Screen.sleepTimeout);
         mBeforeScreenOrientation = Screen.orientation;
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     virtual internal void OnDisable()
     {
-        CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodIn);
 
         // 元の設定に戻す
         Screen.sleepTimeout = mBeforeScreenTimeout.GetValue();
         Screen.orientation = mBeforeScreenOrientation;
 
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     virtual internal void OnDestroy()
     {
-        CategoryLog(LogCategoryMethodIn);
-        CategoryLog(LogCategoryMethodOut);
+        mLogger.CategoryLog(LogCategoryMethodIn);
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     virtual internal bool Back()
