@@ -93,12 +93,17 @@ namespace Eq.Util
                             StackFrame lastStackFrame = new StackTrace(true).GetFrame(1);
 
                             contentBuilder
-                                .Append(lastStackFrame.GetMethod())
-                                .Append("(")
+                                .Append(lastStackFrame.GetMethod());
+                            if (!string.IsNullOrEmpty(lastStackFrame.GetFileName()))
+                            {
+                                contentBuilder.Append("(")
                                 .Append(System.IO.Path.GetFileName(lastStackFrame.GetFileName()))
                                 .Append(":")
                                 .Append(lastStackFrame.GetFileLineNumber())
                                 .Append(")");
+
+                            }
+
                             if (contents != null && contents.Length > 0)
                             {
                                 contentBuilder.Append(": ");
