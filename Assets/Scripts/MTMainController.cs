@@ -100,7 +100,7 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
 
         if (needAddPoint)
         {
-            // Google Tango -> Unityへ座標変換(YZ -> ZY)＋少し見やすいようにYZ方向を補正
+            // Google Tango -> Unityへ座標変換(YZ -> ZY)
             Vector3 trackingPositionV3 = new Vector3();
             Quaternion trackingOrientationQ = new Quaternion();
             TangoSupport.TangoPoseToWorldTransform(poseData.mPoseData, out trackingPositionV3, out trackingOrientationQ);

@@ -13,6 +13,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
 
     internal TangoApplication mTangoApplication;
     internal TangoPoseController mTangoPoseController;
+    internal TangoPointCloud mTangoPointCloud;
     internal TangoEnums.TangoPoseStatusType mCurrentPoseStatus = TangoEnums.TangoPoseStatusType.TANGO_POSE_INVALID;
     internal int mPermissionResult = PermissionInit;
     internal PoseDataManager mPoseDataManager;
@@ -35,6 +36,11 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             mTangoApplication.RequestPermissions();
         }
         mTangoPoseController = FindObjectOfType<TangoPoseController>();
+        mTangoPointCloud = FindObjectOfType<TangoPointCloud>();
+        if(mTangoPointCloud != null)
+        {
+            mTangoPointCloud.FindFloor();
+        }
         mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
@@ -185,10 +191,18 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         mLogger.CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", needAddPoint = " + needAddPoint);
         if (needAddPoint)
         {
-            // Google Tango -> Unityへ座標変換(YZ -> ZY)＋少し見やすいようにYZ方向を補正
-            Vector3 trackingPositionV3 = new Vector3((float)trackingPositionDV3.x, (float)trackingPositionDV3.z + 0.1f, (float)trackingPositionDV3.y + 0.1f);
-            DVector4 trackingOrientationDV4 = poseData.orientation;
-            Quaternion trackingOrientationQ = new Quaternion((float)trackingOrientationDV4.x, (float)trackingOrientationDV4.z, (float)trackingOrientationDV4.y, (float)trackingOrientationDV4.w);
+            // Google Tango -> Unityへ座標変換(YZ -> ZY)
+            Vector3 trackingPositionV3 = new Vector3();
+            Quaternion trackingOrientationQ = new Quaternion();
+            TangoSupport.TangoPoseToWorldTransform(poseData, out trackingPositionV3, out trackingOrientationQ);
+
+            float positionY = trackingPositionV3.y;
+            if (mTangoPointCloud != null && mTangoPointCloud.m_floorFound)
+            {
+                positionY = mTangoPointCloud.m_floorPlaneY;
+            }
+
+            trackingPositionV3.y = positionY;
             Instantiate(mMotionTrackingCapsule, trackingPositionV3, trackingOrientationQ).SetActive(true);
 
             DVector4 trackingOrientation = poseData.orientation;
