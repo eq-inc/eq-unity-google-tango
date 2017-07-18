@@ -143,6 +143,8 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
                 foreach (AreaDescription areaDescription in list)
                 {
                     AreaDescription.Metadata metadata = areaDescription.GetMetadata();
+                    mLogger.CategoryLog(LogCategoryMethodTrace, "Area Description Name = " + areaDescription.GetMetadata().m_name);
+
                     if (metadata.m_dateTime > mostRecentMetadata.m_dateTime)
                     {
                         mostRecent = areaDescription;

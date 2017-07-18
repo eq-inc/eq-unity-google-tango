@@ -19,6 +19,7 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
             AreaDescription mostRecentAreaDescription = GetMostRecentAreaDescription();
 
             mLogger.CategoryLog(LogCategoryMethodTrace, "Area Learning = " + mTangoApplication.m_enableAreaLearning + ", area description learning mode = " + mTangoApplication.m_areaDescriptionLearningMode + ", ADFLoading = " + mTangoApplication.m_enableADFLoading + ", EnableAreaDescriptions = " + mTangoApplication.EnableAreaDescriptions);
+            mLogger.CategoryLog(LogCategoryMethodTrace, "most recent area description = " + mostRecentAreaDescription);
             mTangoApplication.m_areaDescriptionLearningMode = true;
             if (mostRecentAreaDescription != null)
             {
@@ -165,6 +166,10 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
         bool CallbackAsncTask<string, int, bool>.ICallback.DoInBackground(params string[] parameters)
         {
             AreaDescription ret = AreaDescription.SaveCurrent();
+            AreaDescription.Metadata metaData = ret.GetMetadata();
+            metaData.m_name = "test";
+            ret.SaveMetadata(metaData);
+
             mController.mPoseDataManager.SetUuid(ret.m_uuid);
             return mController.mPoseDataManager.Save(mRootDataPath, PoseDataManager.TypeAreaLearning);
         }
