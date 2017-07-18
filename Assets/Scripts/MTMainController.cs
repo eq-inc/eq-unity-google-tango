@@ -7,6 +7,7 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
     private const float MinTranslateSize = 1.0f;
     private const int MaxMotionTrackingData = int.MaxValue;
     public GameObject mMotionTrackingCapsule;
+    internal TangoPointCloud mTangoPointCloud = null;
     internal TangoCoordinateFramePair mFramePair;
     internal Queue<InternalPoseData> mPoseList = new Queue<InternalPoseData>();
     internal InternalPoseData mLastQueuedPoseData;
@@ -48,6 +49,13 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
         mFramePair = new TangoCoordinateFramePair();
         mFramePair.baseFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE;
         mFramePair.targetFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE;
+
+        mTangoPointCloud = FindObjectOfType<TangoPointCloud>();
+        if(mTangoPointCloud != null)
+        {
+            // Floorの検索を開始
+            mTangoPointCloud.FindFloor();
+        }
 
         mLogger.CategoryLog(LogCategoryMethodOut);
     }
@@ -92,10 +100,18 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
 
         if (needAddPoint)
         {
-            // Google Tango -> Unityへ座標変換(YZ -> ZY)＋少し見やすいようにYZ方向を補正
+            // Google Tango -> Unityへ座標変換(YZ -> ZY)
             Vector3 trackingPositionV3 = new Vector3();
             Quaternion trackingOrientationQ = new Quaternion();
             TangoSupport.TangoPoseToWorldTransform(poseData.mPoseData, out trackingPositionV3, out trackingOrientationQ);
+
+            float positionY = trackingPositionV3.y;
+            if(mTangoPointCloud != null && mTangoPointCloud.m_floorFound)
+            {
+                positionY = mTangoPointCloud.m_floorPlaneY;
+            }
+
+            trackingPositionV3.y = positionY;
             poseData.mPoseObject = Instantiate(mMotionTrackingCapsule, trackingPositionV3, trackingOrientationQ);
             poseData.mPoseObject.SetActive(true);
 
