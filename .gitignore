@@ -31,3 +31,10 @@ sysinfo.txt
 
 # Builds
 *.unitypackage
+Assets/TangoSDK/
+Assets/TangoPrefabs/
+Assets/Plugins/
+Assets/Google-Unity/
+Assets/TangoPrefabs.meta
+Assets/TangoSDK.meta
+Assets/Google-Unity.meta
