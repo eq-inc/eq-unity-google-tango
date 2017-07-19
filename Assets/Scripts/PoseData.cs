@@ -6,7 +6,7 @@ using System.Text;
 namespace Eq.Unity
 {
     [Serializable]
-    class PoseData
+    public class PoseData
     {
         public double timestamp;
         public double translateX;
@@ -17,5 +17,21 @@ namespace Eq.Unity
         public double orientateY;
         public double orientateZ;
         public double orientateW;
+
+        public PoseData Clone()
+        {
+            PoseData copyToPoseData = new PoseData();
+
+            copyToPoseData.timestamp = timestamp;
+            copyToPoseData.translateX = translateX;
+            copyToPoseData.translateY = translateY;
+            copyToPoseData.translateZ = translateZ;
+            copyToPoseData.orientateX = orientateX;
+            copyToPoseData.orientateY = orientateY;
+            copyToPoseData.orientateZ = orientateZ;
+            copyToPoseData.orientateW = orientateW;
+
+            return copyToPoseData;
+        }
     }
 }

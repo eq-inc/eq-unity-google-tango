@@ -38,11 +38,12 @@ namespace Eq.Unity
         private const string cJsonFileNamePrefix = "mt_";
         private const string cJsonFileNameSuffix = ".json";
         private const string cJsonFileNameRegEx = cJsonFileNamePrefix + "([a-zA-Z0-9\\-_\\+]*)\\" + cJsonFileNameSuffix;
+        //private const string cJsonFileNameRegEx = cJsonFileNamePrefix + "(?<type>.*?)\\" + cJsonFileNameSuffix;
         private const string cJsonFileNameFmt = cJsonFileNamePrefix + "{0}" + cJsonFileNameSuffix;
         private string mUuid;
         private bool mTemporary = false;
         private Dictionary<string, List<PoseData>> mPoseDataListPerType = new Dictionary<string, List<PoseData>>();
-        private Eq.Util.LogController mLogger = new Eq.Util.LogController();
+        private Util.LogController mLogger = new Util.LogController();
 
         private PoseDataManager(string uuid)
         {
@@ -74,6 +75,22 @@ namespace Eq.Unity
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn);
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut, "mTemporary = " + mTemporary);
             return mTemporary;
+        }
+
+        public void Add(String type, PoseData poseData)
+        {
+            List<PoseData> poseDataList = null;
+
+            lock (mPoseDataListPerType)
+            {
+                if(mPoseDataListPerType.TryGetValue(type, out poseDataList) == false)
+                {
+                    poseDataList = new List<PoseData>();
+                    mPoseDataListPerType[type] = poseDataList;
+                }
+            }
+
+            poseDataList.Add(poseData);
         }
 
         public bool SetUuid(String uuid)
@@ -112,7 +129,6 @@ namespace Eq.Unity
                     {
                         StringBuilder pathBuilder = new StringBuilder(rootDataPath).Append(Path.DirectorySeparatorChar).Append(mUuid);
                         String directoryPath = pathBuilder.ToString();
-                        mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodTrace, "path = " + directoryPath);
                         if (Directory.Exists(directoryPath))
                         {
                             string[] filesInUuidDir = Directory.GetFiles(directoryPath);
@@ -122,20 +138,31 @@ namespace Eq.Unity
                                 {
                                     FileInfo tempFile = new FileInfo(fileInUuidDir);
                                     Match typeText = Regex.Match(tempFile.Name, cJsonFileNameRegEx);
+                                    mLogger.CategoryLog(Util.LogController.LogCategoryMethodTrace, "Regex.Match(" + tempFile.Name + ", " + cJsonFileNameRegEx + ") = " + typeText.Success);
                                     if (typeText.Success)
                                     {
-                                        if (typeText.Value.CompareTo(type) == 0)
+                                        mLogger.CategoryLog(Util.LogController.LogCategoryMethodTrace, "typeText.Groups[1].Value = " + typeText.Groups[1].Value + ", type = " + type);
+                                        if (typeText.Groups[1].Value.CompareTo(type) == 0)
                                         {
-                                            ret = FromJson<List<PoseData>>(tempFile.FullName);
-                                            if (ret != null)
+                                            PoseDataWrapper poseDataListWrapper = new PoseDataWrapper();
+                                            poseDataListWrapper = FromJson<PoseDataWrapper>(tempFile.FullName);
+                                            if (poseDataListWrapper.poseDataList != null)
                                             {
-                                                mPoseDataListPerType[type] = ret;
+                                                mPoseDataListPerType[type] = ret = poseDataListWrapper.poseDataList;
+                                            }
+                                            else
+                                            {
+                                                mLogger.CategoryLog(Util.LogController.LogCategoryMethodError, "fail to parse JSON: " + tempFile.FullName);
                                             }
                                             break;
                                         }
                                     }
                                 }
                             }
+                        }
+                        else
+                        {
+                            mLogger.CategoryLog(Util.LogController.LogCategoryMethodError, "not exist directory: " + directoryPath);
                         }
                     }
 
@@ -163,6 +190,7 @@ namespace Eq.Unity
 
                 if (!Directory.Exists(directoryPath))
                 {
+                    mLogger.CategoryLog(Util.LogController.LogCategoryMethodTrace, "create directory: " + directoryPath);
                     Directory.CreateDirectory(directoryPath);
                 }
 
@@ -172,17 +200,23 @@ namespace Eq.Unity
                     if (mPoseDataListPerType.TryGetValue(type, out poseDataList))
                     {
                         pathBuilder.Append(Path.DirectorySeparatorChar).Append(String.Format(cJsonFileNameFmt, type));
-                        ToJson<List<PoseData>>(pathBuilder.ToString(), poseDataList);
+                        PoseDataWrapper poseDataListWrapper = new PoseDataWrapper(poseDataList);
+                        ToJson<PoseDataWrapper>(pathBuilder.ToString(), poseDataListWrapper);
+                        ret = true;
                     }
                     else
                     {
-                        Debug.LogError("type: " + type + " is not in list");
-                    }
+                        mLogger.CategoryLog(Util.LogController.LogCategoryMethodError, "type: " + type + " is not in list");
+                   }
+                }
+                else
+                {
+                    mLogger.CategoryLog(Util.LogController.LogCategoryMethodError, "fail to create directory: " + directoryPath);
                 }
             }
             else
             {
-                Debug.LogError("cannot save, because this pose data manager is still temporary. call again after it sets uuid");
+                mLogger.CategoryLog(Util.LogController.LogCategoryMethodError, "cannot save, because this pose data manager is still temporary. call again after it sets uuid");
             }
 
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut, "ret = " + ret);
@@ -236,12 +270,14 @@ namespace Eq.Unity
             try
             {
                 writer = new StreamWriter(filePath);
-                writer.Write(JsonUtility.ToJson(targetObject));
+                String jsonText = JsonUtility.ToJson(targetObject);
+                mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodTrace, "json = " + jsonText);
+                writer.Write(jsonText);
             }
             catch (Exception e)
             {
                 ret = false;
-                Debug.LogError(e);
+                mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodError, e);
             }
             finally
             {
@@ -253,6 +289,21 @@ namespace Eq.Unity
 
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut);
             return ret;
+        }
+    }
+
+    [Serializable]
+    public class PoseDataWrapper
+    {
+        public List<PoseData> poseDataList;
+
+        public PoseDataWrapper()
+        {
+        }
+
+        public PoseDataWrapper(List<PoseData> poseDataList)
+        {
+            this.poseDataList = poseDataList;
         }
     }
 }

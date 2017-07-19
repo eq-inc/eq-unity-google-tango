@@ -16,7 +16,7 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
 
         if (!mLearningArea)
         {
-            AreaDescription mostRecentAreaDescription = GetMostRecentAreaDescription();
+            AreaDescription mostRecentAreaDescription = /*GetMostRecentAreaDescription()*/null;
 
             mLogger.CategoryLog(LogCategoryMethodTrace, "Area Learning = " + mTangoApplication.m_enableAreaLearning + ", area description learning mode = " + mTangoApplication.m_areaDescriptionLearningMode + ", ADFLoading = " + mTangoApplication.m_enableADFLoading + ", EnableAreaDescriptions = " + mTangoApplication.EnableAreaDescriptions);
             mLogger.CategoryLog(LogCategoryMethodTrace, "most recent area description = " + mostRecentAreaDescription);
@@ -68,6 +68,12 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
 
         mLogger.CategoryLog(LogCategoryMethodOut, "ret = " + ret);
         return ret;
+    }
+
+    internal override bool Back()
+    {
+        StopTangoService();
+        return true;
     }
 
     private class LoadPoseDataCallback : CallbackAsncTask<string, int, List<PoseData>>.IResultCallback
@@ -160,27 +166,41 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
 
         void CallbackAsncTask<string, int, bool>.IResultCallback.OnPostExecute(bool result, params string[] parameters)
         {
-            // 処理なし
+            // シーンを終了
+            mController.PopCurrentScene();
         }
 
         bool CallbackAsncTask<string, int, bool>.ICallback.DoInBackground(params string[] parameters)
         {
-            AreaDescription ret = AreaDescription.SaveCurrent();
-            AreaDescription.Metadata metaData = ret.GetMetadata();
-            metaData.m_name = "test";
-            ret.SaveMetadata(metaData);
+            mController.mLogger.CategoryLog(LogCategoryMethodIn);
 
-            mController.mPoseDataManager.SetUuid(ret.m_uuid);
-            return mController.mPoseDataManager.Save(mRootDataPath, PoseDataManager.TypeAreaLearning);
+            bool ret = false;
+            AreaDescription saveALRet = AreaDescription.SaveCurrent();
+
+            if (saveALRet != null)
+            {
+                AreaDescription.Metadata metaData = saveALRet.GetMetadata();
+                metaData.m_name = "test";
+                saveALRet.SaveMetadata(metaData);
+
+                mController.mPoseDataManager.SetUuid(saveALRet.m_uuid);
+                ret = mController.mPoseDataManager.Save(mRootDataPath, PoseDataManager.TypeAreaLearning);
+            }
+
+            mController.mLogger.CategoryLog(LogCategoryMethodOut);
+
+            return ret;
         }
     }
 
     public void OnTangoEventAvailableEventHandler(TangoEvent tangoEvent)
     {
+        mLogger.CategoryLog(LogCategoryMethodIn);
         if (tangoEvent.type == TangoEnums.TangoEventType.TANGO_EVENT_AREA_LEARNING
             && tangoEvent.event_key == "AreaDescriptionSaveProgress")
         {
             mLogger.CategoryLog(LogCategoryMethodTrace, "Saving AreaLearned: " + (float.Parse(tangoEvent.event_value) * 100) + "%");
         }
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 }

@@ -6,7 +6,7 @@ using UnityEngine;
 
 abstract public class BaseALMainController : BaseAndroidMainController, ITangoLifecycle, ITangoPose
 {
-    internal const float MinTranslateSize = 0.00001f;
+    internal const float MinTranslateSize = 0.1f;
     internal const int PermissionInit = 0;
     internal const int PermissionGranted = 1;
     internal const int PermissionDenied = -1;
@@ -115,18 +115,21 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             else if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_AREA_DESCRIPTION &&
                targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE)
             {
-                // Area Learning
-                AddTrackingGameObject(poseData);
-            }
-            else if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE &&
-               targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE)
-            {
-                if (this.GetType().FullName.CompareTo(Type.GetType("ALMainControllerForLoadExisting").FullName) != 0)  // 一時実装
+                if (!(this is ALMainControllerForLoadExisting))
                 {
-                    // Motion Tracking
+                    // Area Learning
                     AddTrackingGameObject(poseData);
                 }
             }
+            //else if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE &&
+            //   targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE)
+            //{
+            //    if (!(this is ALMainControllerForLoadExisting))
+            //    {
+            //        // Motion Tracking
+            //        AddTrackingGameObject(poseData);
+            //    }
+            //}
 
         }
     }
@@ -218,6 +221,11 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             mLastPoseData.orientateY = trackingOrientation.y;
             mLastPoseData.orientateZ = trackingOrientation.z;
             mLastPoseData.orientateW = trackingOrientation.w;
+
+            if(this is ALMainControllerForLearning)
+            {
+                mPoseDataManager.Add(PoseDataManager.TypeAreaLearning, mLastPoseData.Clone());
+            }
         }
     }
 }
