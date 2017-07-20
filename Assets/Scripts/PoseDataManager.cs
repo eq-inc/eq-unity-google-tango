@@ -35,6 +35,45 @@ namespace Eq.Unity
             return ret;
         }
 
+        public static bool RemoveInstance(String uuid)
+        {
+            bool ret = false;
+
+            lock (sPoseDataManagerDictionary)
+            {
+                if (uuid.CompareTo(cTemporaryPoseDataManagerUuid) != 0)
+                {
+                    sPoseDataManagerDictionary.Remove(uuid);
+
+                    // フォルダを削除
+                    StringBuilder pathBuilder = new StringBuilder(GetRootPath()).Append(Path.DirectorySeparatorChar).Append(uuid);
+                    String path = pathBuilder.ToString();
+                    try
+                    {
+                        if (Directory.Exists(path))
+                        {
+                            Directory.Delete(path, true);
+                        }
+                    }
+                    catch (IOException e)
+                    {
+                        // 処理なし
+                    }
+                }
+            }
+
+            return ret;
+        }
+
+        private static String GetRootPath()
+        {
+#if UNITY_EDITOR
+            return Directory.GetCurrentDirectory();
+#else
+            return Application.persistentDataPath;
+#endif
+        }
+
         private const string cJsonFileNamePrefix = "mt_";
         private const string cJsonFileNameSuffix = ".json";
         private const string cJsonFileNameRegEx = cJsonFileNamePrefix + "([a-zA-Z0-9\\-_\\+]*)\\" + cJsonFileNameSuffix;
@@ -83,7 +122,7 @@ namespace Eq.Unity
 
             lock (mPoseDataListPerType)
             {
-                if(mPoseDataListPerType.TryGetValue(type, out poseDataList) == false)
+                if (mPoseDataListPerType.TryGetValue(type, out poseDataList) == false)
                 {
                     poseDataList = new List<PoseData>();
                     mPoseDataListPerType[type] = poseDataList;
@@ -91,6 +130,53 @@ namespace Eq.Unity
             }
 
             poseDataList.Add(poseData);
+        }
+
+        public void Remove(String type)
+        {
+            mPoseDataListPerType.Remove(type);
+        }
+
+        public int Size(String type)
+        {
+            int ret = 0;
+            List<PoseData> tempPoseDataList = null;
+
+            if (mPoseDataListPerType.TryGetValue(type, out tempPoseDataList))
+            {
+                ret = tempPoseDataList.Count;
+            }
+
+            return ret;
+        }
+
+        public int SizeAll()
+        {
+            int ret = 0;
+
+            foreach (List<PoseData> tempPoseDataList in mPoseDataListPerType.Values)
+            {
+                ret += tempPoseDataList.Count;
+            }
+
+            return ret;
+        }
+
+        public List<PoseData>.Enumerator GetEnumerator(String type)
+        {
+            List<PoseData>.Enumerator ret;
+            List<PoseData> tempPoseDataList = null;
+
+            if (mPoseDataListPerType.TryGetValue(type, out tempPoseDataList))
+            {
+                ret = tempPoseDataList.GetEnumerator();
+            }
+            else
+            {
+                throw new ArgumentException("type: " + type + " is not in");
+            }
+
+            return ret;
         }
 
         public bool SetUuid(String uuid)
@@ -116,7 +202,7 @@ namespace Eq.Unity
             return ret;
         }
 
-        public List<PoseData> Load(String rootDataPath, string type)
+        public List<PoseData> Load(string type)
         {
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn, "mTemporary = " + mTemporary);
             List<PoseData> ret = null;
@@ -127,7 +213,7 @@ namespace Eq.Unity
                 {
                     if (!mTemporary)
                     {
-                        StringBuilder pathBuilder = new StringBuilder(rootDataPath).Append(Path.DirectorySeparatorChar).Append(mUuid);
+                        StringBuilder pathBuilder = new StringBuilder(GetRootPath()).Append(Path.DirectorySeparatorChar).Append(mUuid);
                         String directoryPath = pathBuilder.ToString();
                         if (Directory.Exists(directoryPath))
                         {
@@ -149,6 +235,7 @@ namespace Eq.Unity
                                             if (poseDataListWrapper.poseDataList != null)
                                             {
                                                 mPoseDataListPerType[type] = ret = poseDataListWrapper.poseDataList;
+                                                mLogger.CategoryLog(Util.LogController.LogCategoryMethodTrace, "type: " + type + ", load " + ret.Count + " pose data");
                                             }
                                             else
                                             {
@@ -166,7 +253,7 @@ namespace Eq.Unity
                         }
                     }
 
-                    if(ret == null)
+                    if (ret == null)
                     {
                         // 一時インスタンスのため、ファイル保存していないため、そのままインスタンス管理のみ実施
                         mPoseDataListPerType[type] = ret = new List<PoseData>();
@@ -178,14 +265,14 @@ namespace Eq.Unity
             return ret;
         }
 
-        public bool Save(String rootDataPath, string type)
+        public bool Save(string type)
         {
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn, "mTemporary = " + mTemporary);
             bool ret = false;
 
             if (!mTemporary)
             {
-                StringBuilder pathBuilder = new StringBuilder(rootDataPath).Append(Path.DirectorySeparatorChar).Append(mUuid);
+                StringBuilder pathBuilder = new StringBuilder(GetRootPath()).Append(Path.DirectorySeparatorChar).Append(mUuid);
                 String directoryPath = pathBuilder.ToString();
 
                 if (!Directory.Exists(directoryPath))
@@ -199,6 +286,8 @@ namespace Eq.Unity
                     List<PoseData> poseDataList = null;
                     if (mPoseDataListPerType.TryGetValue(type, out poseDataList))
                     {
+                        mLogger.CategoryLog(Util.LogController.LogCategoryMethodTrace, "type: " + type + ", save " + poseDataList.Count + " pose data");
+
                         pathBuilder.Append(Path.DirectorySeparatorChar).Append(String.Format(cJsonFileNameFmt, type));
                         PoseDataWrapper poseDataListWrapper = new PoseDataWrapper(poseDataList);
                         ToJson<PoseDataWrapper>(pathBuilder.ToString(), poseDataListWrapper);
@@ -207,7 +296,7 @@ namespace Eq.Unity
                     else
                     {
                         mLogger.CategoryLog(Util.LogController.LogCategoryMethodError, "type: " + type + " is not in list");
-                   }
+                    }
                 }
                 else
                 {
@@ -223,14 +312,14 @@ namespace Eq.Unity
             return ret;
         }
 
-        public Dictionary<string, bool> SaveAll(String rootDataPath)
+        public Dictionary<string, bool> SaveAll()
         {
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodIn);
             Dictionary<string, bool> ret = new Dictionary<string, bool>();
 
             foreach (string type in mPoseDataListPerType.Keys)
             {
-                ret[type] = Save(rootDataPath, type);
+                ret[type] = Save(type);
             }
 
             mLogger.CategoryLog(Eq.Util.LogController.LogCategoryMethodOut);

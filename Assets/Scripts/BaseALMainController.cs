@@ -1,6 +1,7 @@
 ﻿using Eq.Unity;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Tango;
 using UnityEngine;
 
@@ -10,6 +11,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
     internal const int PermissionInit = 0;
     internal const int PermissionGranted = 1;
     internal const int PermissionDenied = -1;
+    internal const String DefaultPoseDataType = PoseDataManager.TypeAreaLearning;
 
     internal TangoApplication mTangoApplication;
     internal TangoPoseController mTangoPoseController;
@@ -19,7 +21,9 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
     internal PoseDataManager mPoseDataManager;
     internal PoseData mLastPoseData;
     internal List<PoseData> mPoseList;
+    internal bool mLearningArea = false;
     public GameObject mMotionTrackingCapsule;
+    public GameObject mLoadedMotionTrackingCapsule;
 
     abstract internal bool StartTangoService();
     abstract internal bool StopTangoService();
@@ -28,6 +32,13 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
     {
         mLogger.CategoryLog(LogCategoryMethodIn);
         base.Start();
+
+        GameObject processId = GameObject.Find("ProcessId");
+        if(processId != null)
+        {
+            UnityEngine.UI.Text processIdText = processId.GetComponent<UnityEngine.UI.Text>();
+            processIdText.text = "ProcessID: " + System.Diagnostics.Process.GetCurrentProcess().Id;
+        }
 
         mTangoApplication = FindObjectOfType<TangoApplication>();
         if (mTangoApplication != null)
@@ -59,10 +70,20 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         if (mTangoApplication != null)
         {
             mTangoApplication.Unregister(this);
-            StopTangoService();
+        }
+
+        if(mPoseDataManager != null)
+        {
+            mPoseDataManager.Remove(DefaultPoseDataType);
         }
 
         mLogger.CategoryLog(LogCategoryMethodOut);
+    }
+
+    internal override bool Back()
+    {
+        StopTangoService();
+        return true;
     }
 
     public virtual void OnTangoPermissions(bool permissionsGranted)
@@ -107,30 +128,21 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
 
             mLogger.CategoryLog(LogCategoryMethodTrace, "base = " + baseFrame + ", target = " + targetFrame);
             if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_AREA_DESCRIPTION &&
+               targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE) 
+            {
+                // Area Learning
+                PoseData addPoseData = AddTrackingGameObject(poseData, mMotionTrackingCapsule);
+                if (addPoseData != null)
+                {
+                    mPoseDataManager.Add(PoseDataManager.TypeAreaLearning, addPoseData.Clone());
+                }
+            }
+            else if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_AREA_DESCRIPTION &&
                  targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE)
             {
                 // relocalizing(ADF)
-                // UpdateTrackingGameObject(poseData);
+                UpdateTrackingGameObject();
             }
-            else if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_AREA_DESCRIPTION &&
-               targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE)
-            {
-                if (!(this is ALMainControllerForLoadExisting))
-                {
-                    // Area Learning
-                    AddTrackingGameObject(poseData);
-                }
-            }
-            //else if (baseFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_START_OF_SERVICE &&
-            //   targetFrame == TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE)
-            //{
-            //    if (!(this is ALMainControllerForLoadExisting))
-            //    {
-            //        // Motion Tracking
-            //        AddTrackingGameObject(poseData);
-            //    }
-            //}
-
         }
     }
 
@@ -171,9 +183,40 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         return mostRecent;
     }
 
-    internal void AddTrackingGameObject(TangoPoseData poseData)
+    internal PoseData GetPoseDataFromTangoPoseData(TangoPoseData fromTangoPoseData, PoseData toPoseData, bool setToFloor)
     {
+        PoseData poseData = toPoseData;
+        if(poseData == null)
+        {
+            poseData = new PoseData();
+        }
+
+        // Google Tango -> Unityへ座標変換(YZ -> ZY)
+        Vector3 trackingPositionV3 = new Vector3();
+        Quaternion trackingOrientationQ = new Quaternion();
+        TangoSupport.TangoPoseToWorldTransform(fromTangoPoseData, out trackingPositionV3, out trackingOrientationQ);
+
+        float positionY = trackingPositionV3.y;
+        if (setToFloor && mTangoPointCloud != null && mTangoPointCloud.m_floorFound)
+        {
+            positionY = mTangoPointCloud.m_floorPlaneY;
+        }
+        trackingPositionV3.y = positionY;
+
+        DVector4 trackingOrientation = fromTangoPoseData.orientation;
+        poseData.timestamp = fromTangoPoseData.timestamp;
+        poseData.SetTranslate(trackingPositionV3);
+        poseData.SetOrientation(trackingOrientation);
+
+        return poseData;
+    }
+
+    internal PoseData AddTrackingGameObject(TangoPoseData poseData, GameObject itemPrefab)
+    {
+        mLogger.CategoryLog(LogCategoryMethodIn);
+
         bool needAddPoint = false;
+        PoseData addPoseData = null;
         DVector3 trackingPositionDV3 = poseData.translation;
 
         if (mLastPoseData != null)
@@ -195,37 +238,154 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         if (needAddPoint)
         {
             // Google Tango -> Unityへ座標変換(YZ -> ZY)
-            Vector3 trackingPositionV3 = new Vector3();
-            Quaternion trackingOrientationQ = new Quaternion();
-            TangoSupport.TangoPoseToWorldTransform(poseData, out trackingPositionV3, out trackingOrientationQ);
+            mLastPoseData = GetPoseDataFromTangoPoseData(poseData, mLastPoseData, false);
+            GameObject addGameObject = Instantiate(itemPrefab, mLastPoseData.GetTranslation(), mLastPoseData.GetOrientation());
+            addGameObject.SetActive(true);
+            mLastPoseData.SetTargetGameObject(addGameObject);
 
-            float positionY = trackingPositionV3.y;
-            if (mTangoPointCloud != null && mTangoPointCloud.m_floorFound)
+            addPoseData = mLastPoseData;
+        }
+
+        mLogger.CategoryLog(LogCategoryMethodOut);
+        return addPoseData;
+    }
+
+    internal void UpdateTrackingGameObject()
+    {
+        mLogger.CategoryLog(LogCategoryMethodIn);
+
+        List<PoseData>.Enumerator enumerator = mPoseDataManager.GetEnumerator(DefaultPoseDataType);
+        TangoCoordinateFramePair pair = new TangoCoordinateFramePair();
+        pair.baseFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_AREA_DESCRIPTION;
+        pair.targetFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE;
+        TangoPoseData tangoPoseData = new TangoPoseData();
+
+        while (enumerator.MoveNext())
+        {
+            PoseData poseData = enumerator.Current;
+            PoseProvider.GetPoseAtTime(tangoPoseData, poseData.timestamp, pair);
+
+            if(tangoPoseData.status_code == TangoEnums.TangoPoseStatusType.TANGO_POSE_VALID)
             {
-                positionY = mTangoPointCloud.m_floorPlaneY;
+                poseData = GetPoseDataFromTangoPoseData(tangoPoseData, poseData, false);
+
+                GameObject targetGameObject = poseData.getTargetGameObject();
+                if(targetGameObject != null)
+                {
+                    mLogger.CategoryLog(LogCategoryMethodTrace, "update position and rotation");
+                    targetGameObject.transform.position = poseData.GetTranslation();
+                    targetGameObject.transform.rotation = poseData.GetOrientation();
+                }
+            }
+            else
+            {
+                mLogger.CategoryLog(LogCategoryMethodTrace, "tango pose data is not valid");
+            }
+        }
+
+        mLogger.CategoryLog(LogCategoryMethodOut);
+    }
+
+    internal class LoadPoseDataCallback : CallbackAsncTask<string, int, List<PoseData>>.IResultCallback
+    {
+        private BaseALMainController mController;
+
+        public LoadPoseDataCallback(BaseALMainController controller)
+        {
+            if (controller == null)
+            {
+                throw new ArgumentNullException("controller == null");
             }
 
-            trackingPositionV3.y = positionY;
-            Instantiate(mMotionTrackingCapsule, trackingPositionV3, trackingOrientationQ).SetActive(true);
+            mController = controller;
+        }
 
-            DVector4 trackingOrientation = poseData.orientation;
-            if (mLastPoseData == null)
-            {
-                mLastPoseData = new PoseData();
-            }
-            mLastPoseData.timestamp = poseData.timestamp;
-            mLastPoseData.translateX = trackingPositionDV3.x;
-            mLastPoseData.translateY = trackingPositionDV3.y;
-            mLastPoseData.translateZ = trackingPositionDV3.z;
-            mLastPoseData.orientateX = trackingOrientation.x;
-            mLastPoseData.orientateY = trackingOrientation.y;
-            mLastPoseData.orientateZ = trackingOrientation.z;
-            mLastPoseData.orientateW = trackingOrientation.w;
+        void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnPreExecute()
+        {
+            // 処理なし
+        }
 
-            if(this is ALMainControllerForLearning)
+        void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnProgressUpdate(params int[] values)
+        {
+            // 処理なし
+        }
+
+        void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnPostExecute(List<PoseData> result, params string[] parameters)
+        {
+            mController.mPoseList = result;
+        }
+
+        List<PoseData> CallbackAsncTask<string, int, List<PoseData>>.ICallback.DoInBackground(params string[] parameters)
+        {
+            List<PoseData> ret = mController.mPoseDataManager.Load(PoseDataManager.TypeAreaLearning);
+
+            if (ret != null && ret.Count > 0)
             {
-                mPoseDataManager.Add(PoseDataManager.TypeAreaLearning, mLastPoseData.Clone());
+                TangoPoseData tangoPoseData = new TangoPoseData();
+                foreach (PoseData poseData in ret)
+                {
+                    tangoPoseData.timestamp = poseData.timestamp;
+                    tangoPoseData.translation = new DVector3(poseData.translateX, poseData.translateY, poseData.translateZ);
+                    tangoPoseData.orientation = new DVector4(poseData.orientateX, poseData.orientateY, poseData.orientateZ, poseData.orientateW);
+
+                    mController.AddTrackingGameObject(tangoPoseData, mController.mLoadedMotionTrackingCapsule);
+                }
             }
+
+            return ret;
+        }
+    }
+
+    internal class SavePoseDataCallback : CallbackAsncTask<string, int, bool>.IResultCallback
+    {
+        private BaseALMainController mController;
+
+        public SavePoseDataCallback(BaseALMainController controller)
+        {
+            if (controller == null)
+            {
+                throw new ArgumentNullException("controller == null");
+            }
+
+            mController = controller;
+        }
+
+        void CallbackAsncTask<string, int, bool>.IResultCallback.OnPreExecute()
+        {
+            // 処理なし
+        }
+
+        void CallbackAsncTask<string, int, bool>.IResultCallback.OnProgressUpdate(params int[] values)
+        {
+            // 処理なし
+        }
+
+        void CallbackAsncTask<string, int, bool>.IResultCallback.OnPostExecute(bool result, params string[] parameters)
+        {
+            // シーンを終了
+            mController.PopCurrentScene();
+        }
+
+        bool CallbackAsncTask<string, int, bool>.ICallback.DoInBackground(params string[] parameters)
+        {
+            mController.mLogger.CategoryLog(LogCategoryMethodIn);
+
+            bool ret = false;
+            AreaDescription saveALRet = AreaDescription.SaveCurrent();
+
+            if (saveALRet != null)
+            {
+                AreaDescription.Metadata metaData = saveALRet.GetMetadata();
+                metaData.m_name = "test";
+                saveALRet.SaveMetadata(metaData);
+
+                mController.mPoseDataManager.SetUuid(saveALRet.m_uuid);
+                ret = mController.mPoseDataManager.Save(PoseDataManager.TypeAreaLearning);
+            }
+
+            mController.mLogger.CategoryLog(LogCategoryMethodOut);
+
+            return ret;
         }
     }
 }

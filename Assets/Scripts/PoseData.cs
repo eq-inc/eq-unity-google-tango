@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using UnityEngine;
 
 namespace Eq.Unity
 {
@@ -18,6 +16,8 @@ namespace Eq.Unity
         public double orientateZ;
         public double orientateW;
 
+        private GameObject mTargetGameObject;
+
         public PoseData Clone()
         {
             PoseData copyToPoseData = new PoseData();
@@ -32,6 +32,49 @@ namespace Eq.Unity
             copyToPoseData.orientateW = orientateW;
 
             return copyToPoseData;
+        }
+
+        public GameObject getTargetGameObject()
+        {
+            return mTargetGameObject;
+        }
+
+        public void SetTargetGameObject(GameObject gameObject)
+        {
+            mTargetGameObject = gameObject;
+        }
+
+        public void SetTranslate(Vector3 translate)
+        {
+            translateX = translate.x;
+            translateY = translate.y;
+            translateZ = translate.z;
+        }
+
+        public void SetOrientation(Vector4 orientation)
+        {
+            orientateX = orientation.x;
+            orientateY = orientation.y;
+            orientateZ = orientation.z;
+            orientateW = orientation.w;
+        }
+
+        public void SetOrientation(Tango.DVector4 orientation)
+        {
+            orientateX = orientation.x;
+            orientateY = orientation.y;
+            orientateZ = orientation.z;
+            orientateW = orientation.w;
+        }
+
+        public Vector3 GetTranslation()
+        {
+            return new Vector3((float)translateX, (float)translateY, (float)translateZ);
+        }
+
+        public Quaternion GetOrientation()
+        {
+            return new Quaternion((float)orientateX, (float)orientateY, (float)orientateZ, (float)orientateW);
         }
     }
 }
