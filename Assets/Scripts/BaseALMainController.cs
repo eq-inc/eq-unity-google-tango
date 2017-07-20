@@ -7,7 +7,7 @@ using UnityEngine;
 
 abstract public class BaseALMainController : BaseAndroidMainController, ITangoLifecycle, ITangoPose
 {
-    internal const float MinTranslateSize = 0.1f;
+    internal const float MinTranslateSize = 1f;
     internal const int PermissionInit = 0;
     internal const int PermissionGranted = 1;
     internal const int PermissionDenied = -1;
@@ -59,6 +59,8 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
     {
         mLogger.CategoryLog(LogCategoryMethodIn);
         base.OnEnable();
+        SetScreenTimeout(BaseAndroidMainController.NeverSleep);
+        SetScreenOrientation(ScreenOrientation.Portrait);
         mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
