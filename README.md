@@ -3,7 +3,7 @@ Test of Google Tango
 
 Clone後、以下のことを実施してください。
 * 「Tango SDK for Unity」をDLして、Assetsにインポート(※)
-* 「https://www.assetstore.unity3d.com/jp/#!/content/9994」の"Low Poly RPG Pack"をAssetsにインポート
+* 「[https://www.assetstore.unity3d.com/jp/#!/content/9994](https://www.assetstore.unity3d.com/jp/#!/content/9994)」の"[Low Poly RPG Pack](https://www.assetstore.unity3d.com/jp/#!/content/9994)"をAssetsにインポート
 
 ※ バージョン"Ikariotikos"を使用する場合、[こちら](http://developers.blog.eq-inc.jp/2017/07/unitygoogle-tango-tango-sdk-for.html)を見て、一部Prefabの設定変更をお願いします(バージョン"Hopak"を使用する場合は変更不要です)。<br/>バージョン"Hopak"を使用される場合はDLサイトにはリンクがないので、下記のリンクより直接DLしてください。<br/>
 
