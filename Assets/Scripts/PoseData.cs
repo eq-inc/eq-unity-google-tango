@@ -44,7 +44,7 @@ namespace Eq.Unity
             mTargetGameObject = gameObject;
         }
 
-        public void SetTranslate(Vector3 translate)
+        public void SetTranslation(Vector3 translate)
         {
             translateX = translate.x;
             translateY = translate.y;

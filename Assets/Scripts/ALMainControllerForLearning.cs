@@ -1,8 +1,4 @@
 ﻿using Eq.Unity;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
 using Tango;
 
 public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
@@ -16,14 +12,16 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
         {
             // 古いADFは全て削除(実験用)
             AreaDescription[] allAreaDescriptionArray = AreaDescription.GetList();
-            foreach(AreaDescription areaDescription in allAreaDescriptionArray)
+            if(allAreaDescriptionArray != null && allAreaDescriptionArray.Length > 0)
             {
-                mLogger.CategoryLog(LogCategoryMethodTrace, "remove AreaDescription and PoseDataManager: uuid = " + areaDescription.m_uuid);
-                PoseDataManager.RemoveInstance(areaDescription.m_uuid);
-                areaDescription.Delete();
+                foreach (AreaDescription areaDescription in allAreaDescriptionArray)
+                {
+                    mLogger.CategoryLog(LogCategoryMethodTrace, "remove AreaDescription and PoseDataManager: uuid = " + areaDescription.m_uuid);
+                    PoseDataManager.RemoveInstance(areaDescription.m_uuid);
+                    areaDescription.Delete();
+                }
             }
 
-            mTangoApplication.m_areaDescriptionLearningMode = true;
             mPoseDataManager = PoseDataManager.GetInstance(null);
             mPoseDataManager.EnableDebugLog((mLogger.GetOutputLogCategory() & LogCategoryMethodTrace) == LogCategoryMethodTrace);
             mTangoApplication.Startup(null);

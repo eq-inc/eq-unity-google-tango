@@ -33,13 +33,6 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         mLogger.CategoryLog(LogCategoryMethodIn);
         base.Start();
 
-        GameObject processId = GameObject.Find("ProcessId");
-        if(processId != null)
-        {
-            UnityEngine.UI.Text processIdText = processId.GetComponent<UnityEngine.UI.Text>();
-            processIdText.text = "ProcessID: " + System.Diagnostics.Process.GetCurrentProcess().Id;
-        }
-
         mTangoApplication = FindObjectOfType<TangoApplication>();
         if (mTangoApplication != null)
         {
@@ -193,27 +186,21 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             poseData = new PoseData();
         }
 
-        // Google Tango -> Unityへ座標変換(YZ -> ZY)
-        Vector3 trackingPositionV3 = new Vector3();
-        Quaternion trackingOrientationQ = new Quaternion();
-        TangoSupport.TangoPoseToWorldTransform(fromTangoPoseData, out trackingPositionV3, out trackingOrientationQ);
+        poseData.timestamp = fromTangoPoseData.timestamp;
+        poseData.SetTranslation(fromTangoPoseData.translation.ToVector3());
+        poseData.SetOrientation(fromTangoPoseData.orientation);
 
-        float positionY = trackingPositionV3.y;
         if (setToFloor && mTangoPointCloud != null && mTangoPointCloud.m_floorFound)
         {
-            positionY = mTangoPointCloud.m_floorPlaneY;
+            // Google Tangoの座標系はRight-Hand系なのに、TangoPointCloud.m_floorPlaneYはLeft-Hand系のような名称になっている。
+            // そのため変換時はRight-Hand系の高さ方向のZ軸に設定する
+            poseData.translateZ = mTangoPointCloud.m_floorPlaneY;
         }
-        trackingPositionV3.y = positionY;
-
-        DVector4 trackingOrientation = fromTangoPoseData.orientation;
-        poseData.timestamp = fromTangoPoseData.timestamp;
-        poseData.SetTranslate(trackingPositionV3);
-        poseData.SetOrientation(trackingOrientation);
 
         return poseData;
     }
 
-    internal PoseData AddTrackingGameObject(TangoPoseData poseData, GameObject itemPrefab)
+    internal virtual PoseData AddTrackingGameObject(TangoPoseData poseData, GameObject itemPrefab)
     {
         mLogger.CategoryLog(LogCategoryMethodIn);
 
@@ -239,9 +226,16 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         mLogger.CategoryLog(LogCategoryMethodTrace, "trackingPositionDV3 = " + trackingPositionDV3.ToString() + ", needAddPoint = " + needAddPoint);
         if (needAddPoint)
         {
-            // Google Tango -> Unityへ座標変換(YZ -> ZY)
+            // TangoPoseDataからPoseDataへの単純変換
             mLastPoseData = GetPoseDataFromTangoPoseData(poseData, mLastPoseData, false);
-            GameObject addGameObject = Instantiate(itemPrefab, mLastPoseData.GetTranslation(), mLastPoseData.GetOrientation());
+
+            // Google Tango -> Unityへ座標変換(YZ -> ZY)
+            Vector3 trackingPositionV3 = new Vector3();
+            Quaternion trackingOrientationQ = new Quaternion();
+            TangoSupport.TangoPoseToWorldTransform(poseData, out trackingPositionV3, out trackingOrientationQ);
+
+            // GameObjectの生成
+            GameObject addGameObject = Instantiate(itemPrefab, trackingPositionV3, trackingOrientationQ);
             addGameObject.SetActive(true);
             mLastPoseData.SetTargetGameObject(addGameObject);
 
@@ -270,6 +264,11 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
             if(tangoPoseData.status_code == TangoEnums.TangoPoseStatusType.TANGO_POSE_VALID)
             {
                 poseData = GetPoseDataFromTangoPoseData(tangoPoseData, poseData, false);
+
+                // Google Tango -> Unityへ座標変換(YZ -> ZY)
+                Vector3 trackingPositionV3 = new Vector3();
+                Quaternion trackingOrientationQ = new Quaternion();
+                TangoSupport.TangoPoseToWorldTransform(tangoPoseData, out trackingPositionV3, out trackingOrientationQ);
 
                 GameObject targetGameObject = poseData.getTargetGameObject();
                 if(targetGameObject != null)
