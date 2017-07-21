@@ -22,6 +22,32 @@ public class BaseAndroidMainController : BaseAndroidBehaviour
     public static ScreenTimeout SystemSetting = new ScreenTimeout(SleepTimeout.SystemSetting);
     internal static Stack<string> SceneStack = new Stack<string>();
 
+    internal bool IsOn(string toggleName)
+    {
+        bool ret = false;
+        GameObject toggleGameObject = GameObject.Find(toggleName);
+
+        if (toggleGameObject != null)
+        {
+            ret = IsOn(toggleGameObject);
+        }
+
+        return ret;
+    }
+
+    internal bool IsOn(GameObject toggleGameObject)
+    {
+        bool ret = false;
+
+        UnityEngine.UI.Toggle toggle = toggleGameObject.GetComponent<UnityEngine.UI.Toggle>();
+        if (toggle != null)
+        {
+            ret = toggle.isOn;
+        }
+
+        return ret;
+    }
+
     public ScreenTimeout GetScreenTimeout(int value)
     {
         mLogger.CategoryLog(LogCategoryMethodIn);
