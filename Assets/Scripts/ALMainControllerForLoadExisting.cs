@@ -1,98 +1,122 @@
 ﻿using Eq.Unity;
-using System;
 using System.Collections.Generic;
-using System.IO;
 using Tango;
 using UnityEngine;
 
-public class ALMainControllerForLoadExisting : BaseALMainController
+public class ALMainControllerForLoadExisting : BaseALMainController, ITangoEvent
 {
+    private const string StartMotionTrackingContent = "Start Motion Tracking";
+    private const string StopMotionTrackingContent = "Stop Motion Tracking";
+
+    private UnityEngine.UI.Text mSwitchMotionTrackingTextComponent;
+    private bool mEnableMotionTracking = false;
+
+    public void SwitchMotionTrackingButtonClick()
+    {
+        if(mSwitchMotionTrackingTextComponent != null)
+        {
+            if (mEnableMotionTracking)
+            {
+                // Start -> Stop
+                mSwitchMotionTrackingTextComponent.text = StartMotionTrackingContent;
+            }
+            else
+            {
+                // Stop -> Start
+                mSwitchMotionTrackingTextComponent.text = StopMotionTrackingContent;
+            }
+        }
+
+        mEnableMotionTracking = (!mEnableMotionTracking);
+    }
+
+    internal override void Start()
+    {
+        base.Start();
+
+        GameObject switchMotionTrackingText = GameObject.Find("SwitchMotionTrackingText");
+        if(switchMotionTrackingText != null)
+        {
+            mSwitchMotionTrackingTextComponent = switchMotionTrackingText.GetComponent<UnityEngine.UI.Text>();
+            mSwitchMotionTrackingTextComponent.text = StartMotionTrackingContent;
+        }
+    }
+
     internal override bool StartTangoService()
     {
         mLogger.CategoryLog(LogCategoryMethodIn);
         bool ret = true;
-        AreaDescription mostRecentAreaDescription = GetMostRecentAreaDescription();
 
-        if (mostRecentAreaDescription != null)
+        if (!mLearningArea)
         {
-            mPoseDataManager = PoseDataManager.GetInstance(mostRecentAreaDescription.m_uuid);
-            mTangoApplication.Startup(mostRecentAreaDescription);
-            new CallbackAsncTask<string, int, List<PoseData>>(new LoadPoseDataCallback(this)).Execute();
+            AreaDescription mostRecentAreaDescription = GetMostRecentAreaDescription();
+
+            if (mostRecentAreaDescription != null)
+            {
+                mPoseDataManager = PoseDataManager.GetInstance(mostRecentAreaDescription.m_uuid);
+                mTangoApplication.Startup(mostRecentAreaDescription);
+                mLearningArea = true;
+                new CallbackAsncTask<string, int, List<PoseData>>(new LoadPoseDataCallback(this)).Execute();
+            }
+            else
+            {
+                mLogger.CategoryLog(LogCategoryMethodError, "none area description file");
+                ret = false;
+            }
+
+            mPoseDataManager.EnableDebugLog((mLogger.GetOutputLogCategory() & LogCategoryMethodTrace) == LogCategoryMethodTrace);
         }
         else
         {
-            Debug.LogError("none area description file");
             ret = false;
         }
 
-        mPoseDataManager.EnableDebugLog((mLogger.GetOutputLogCategory() & LogCategoryMethodTrace) == LogCategoryMethodTrace);
         mLogger.CategoryLog(LogCategoryMethodOut, "ret = " + ret);
         return ret;
     }
 
     internal override bool StopTangoService()
     {
-        mTangoApplication.Shutdown();
+        mLogger.CategoryLog(LogCategoryMethodIn);
+        bool ret = true;
 
-        return true;
+        if (mLearningArea)
+        {
+            // 停止したときに、領域学習の保存を実施
+            CallbackAsncTask<string, int, bool> task = new CallbackAsncTask<string, int, bool>(new SavePoseDataCallback(this));
+            task.EnableDebugLog((mLogger.GetOutputLogCategory() & LogCategoryMethodTrace) == LogCategoryMethodTrace);
+            task.Execute();
+            mLearningArea = false;
+        }
+        else
+        {
+            ret = false;
+        }
+
+        mLogger.CategoryLog(LogCategoryMethodOut, "ret = " + ret);
+        return ret;
     }
 
-    private class LoadPoseDataCallback : CallbackAsncTask<string, int, List<PoseData>>.IResultCallback
+    internal override PoseData AddTrackingGameObject(TangoPoseData poseData, GameObject itemPrefab)
     {
-        private BaseALMainController mController;
-        private string mRootDataPath;
+        PoseData ret = null;
 
-        public LoadPoseDataCallback(BaseALMainController controller)
+        if (itemPrefab.Equals(mLoadedMotionTrackingCapsule) || mEnableMotionTracking)
         {
-            if (controller == null)
-            {
-                throw new ArgumentNullException("controller == null");
-            }
-
-            mController = controller;
+            ret = base.AddTrackingGameObject(poseData, itemPrefab);
         }
 
-        void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnPreExecute()
+        return ret;
+    }
+
+    public void OnTangoEventAvailableEventHandler(TangoEvent tangoEvent)
+    {
+        mLogger.CategoryLog(LogCategoryMethodIn);
+        if (tangoEvent.type == TangoEnums.TangoEventType.TANGO_EVENT_AREA_LEARNING
+            && tangoEvent.event_key == "AreaDescriptionSaveProgress")
         {
-#if UNITY_EDITOR
-            mRootDataPath = Directory.GetCurrentDirectory();
-#else
-            mRootDataPath = Application.persistentDataPath;
-#endif
+            mLogger.CategoryLog(LogCategoryMethodTrace, "Saving AreaLearned: " + (float.Parse(tangoEvent.event_value) * 100) + "%");
         }
-
-        void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnProgressUpdate(params int[] values)
-        {
-            // 処理なし
-        }
-
-        void CallbackAsncTask<string, int, List<PoseData>>.IResultCallback.OnPostExecute(List<PoseData> result, params string[] parameters)
-        {
-            mController.mPoseList = result;
-        }
-
-        List<PoseData> CallbackAsncTask<string, int, List<PoseData>>.ICallback.DoInBackground(params string[] parameters)
-        {
-            List<PoseData> ret = mController.mPoseDataManager.Load(mRootDataPath, PoseDataManager.TypeAreaLearning);
-
-            if (ret != null && ret.Count > 0)
-            {
-                TangoPoseData tangoPoseData = new TangoPoseData();
-                TangoCoordinateFramePair pair = new TangoCoordinateFramePair();
-                pair.baseFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_AREA_DESCRIPTION;
-                pair.targetFrame = TangoEnums.TangoCoordinateFrameType.TANGO_COORDINATE_FRAME_DEVICE;
-
-                foreach (PoseData poseData in ret)
-                {
-                    PoseProvider.GetPoseAtTime(tangoPoseData, poseData.timestamp, pair);
-                    if ((tangoPoseData.status_code == TangoEnums.TangoPoseStatusType.TANGO_POSE_VALID) && (poseData.timestamp == tangoPoseData.timestamp))
-                    {
-                        mController.AddTrackingGameObject(tangoPoseData);
-                    }
-                }
-            }
-
-            return ret;
-        }
+        mLogger.CategoryLog(LogCategoryMethodOut);
     }
 }
