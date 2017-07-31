@@ -114,7 +114,7 @@ abstract public class BaseALMainController : BaseAndroidMainController, ITangoLi
         mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
-    public void OnTangoPoseAvailable(TangoPoseData poseData)
+    public virtual void OnTangoPoseAvailable(TangoPoseData poseData)
     {
         if (poseData.status_code == TangoEnums.TangoPoseStatusType.TANGO_POSE_VALID)
         {

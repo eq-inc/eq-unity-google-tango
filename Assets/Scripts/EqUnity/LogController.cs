@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text;
 
-namespace Eq.Util
+namespace Eq.Unity
 {
     public class LogController
     {

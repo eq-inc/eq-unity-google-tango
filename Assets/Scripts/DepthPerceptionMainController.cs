@@ -1,4 +1,4 @@
-﻿using System.Text;
+﻿using Eq.Unity;
 using Tango;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -8,7 +8,7 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
     internal TangoApplication mTangoApplication;
     internal TangoPointCloud mTangoPointCloud;
     internal TangoPointCloudFloor mTangoPointCloudFloor;
-    internal System.Collections.Generic.Dictionary<UnityEngine.Plane, GameObject> mPlaneObjectTable = new System.Collections.Generic.Dictionary<UnityEngine.Plane, GameObject>();
+    internal System.Collections.Generic.Dictionary<Plane, GameObject> mPlaneObjectTable = new System.Collections.Generic.Dictionary<Plane, GameObject>();
     internal bool mFindingFloor = false;
     internal bool mShowPointCloud = false;
     public GameObject mPlaneBase;
@@ -29,7 +29,7 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
         }
     }
 
-    public void ButtonClicked(Object targetObject, BaseEventData eventData)
+    public virtual void ButtonClicked(Object targetObject, BaseEventData eventData)
     {
         string targetObjectName = targetObject.name;
 
@@ -102,7 +102,7 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
 
     internal override void Update()
     {
-        mLogger.CategoryLog(LogCategoryMethodIn);
+        //mLogger.CategoryLog(LogCategoryMethodIn);
         base.Update();
 
         if((mTangoPointCloud != null) && mTangoPointCloud.m_floorFound)
@@ -110,7 +110,7 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
             mLogger.CategoryLog(LogCategoryMethodTrace, "floor y position = " + mTangoPointCloud.m_floorPlaneY);
         }
 
-        mLogger.CategoryLog(LogCategoryMethodOut);
+        //mLogger.CategoryLog(LogCategoryMethodOut);
     }
 
     public void OnTangoPermissions(bool permissionsGranted)
@@ -127,13 +127,25 @@ public class DepthPerceptionMainController : BaseAndroidMainController, ITangoDe
 
             mLogger.CategoryLog(LogCategoryMethodTrace, "Find TangoPointCloudFloor");
             mTangoPointCloudFloor = FindObjectOfType<TangoPointCloudFloor>();
-            mTangoPointCloudFloor.gameObject.SetActive(false);
+            if(mTangoPointCloudFloor != null)
+            {
+                mTangoPointCloudFloor.gameObject.SetActive(false);
+            }
 
             mLogger.CategoryLog(LogCategoryMethodTrace, "call TangoApplication.Startup");
             mTangoApplication.Startup(null);
 
-            GameObject.Find("FindFloorButton").SetActive(true);
-            GameObject.Find("ShowPointCloudButton").SetActive(true);
+            GameObject findFloorButton = GameObject.Find("FindFloorButton");
+            if(findFloorButton != null)
+            {
+                findFloorButton.SetActive(true);
+            }
+
+            GameObject showPointCloudButton = GameObject.Find("ShowPointCloudButton");
+            if(showPointCloudButton != null)
+            {
+                showPointCloudButton.SetActive(true);
+            }
         }
         else
         {
