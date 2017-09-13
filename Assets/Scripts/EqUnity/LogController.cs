@@ -9,7 +9,19 @@ namespace Eq.Unity
         public const System.Int64 LogCategoryMethodTrace = 0x0000000000000001 << 2;
         public const System.Int64 LogCategoryMethodOut = 0x0000000000000001 << 3;
         public const System.Int64 LogCategoryMethodError = 0x0000000000000001 << 63;
-        public System.Int64 mOutputLogCategories = 0;
+        public const System.Int64 LogCategoryAll = 0x7FFFFFFFFFFFFFFF;
+        public const System.Int64 LogCategoryNone = 0;
+        public System.Int64 mOutputLogCategories = LogCategoryNone;
+
+        public LogController()
+        {
+            // 処理なし
+        }
+
+        public LogController(System.Int64 outputLogCategories)
+        {
+            mOutputLogCategories = outputLogCategories;
+        }
 
         public void AppendOutputLogCategory(System.Int64 outputLogCategories)
         {

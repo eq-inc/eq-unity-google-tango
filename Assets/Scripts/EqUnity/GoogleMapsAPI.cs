@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections;
+using System.Runtime.CompilerServices;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
+[assembly: InternalsVisibleTo("eq-unity-utility.Tests")]
 namespace Eq.Unity
 {
     public class GoogleMapsAPI : BaseAndroidBehaviour
@@ -13,7 +15,13 @@ namespace Eq.Unity
             Driving, Walking, Bicycling, Transit
         }
 
+        internal static LogController Logger = new LogController();
         private const string UrlBaseDirections = "https://maps.googleapis.com/maps/api/directions/json?";
+
+        public static void EnableDebug(bool enable)
+        {
+            Logger.SetOutputLogCategory(enable ? LogController.LogCategoryAll : LogController.LogCategoryNone);
+        }
 
         private string mAPIKey;
 
@@ -27,18 +35,33 @@ namespace Eq.Unity
             mAPIKey = apiKey;
         }
 
+        internal void Test()
+        {
+
+        }
+
         public ResponseDirections GetDirectionsFromCurrentPosition(TransferMode transferMode, string address)
         {
-            return GetDirections(transferMode, Input.location.lastData.latitude, Input.location.lastData.longitude, new UrlParameterDestination(address));
+            Logger.CategoryLog(LogCategoryMethodIn);
+            ResponseDirections ret= GetDirections(transferMode, new UrlParameterOrigin(Input.location.lastData.latitude, Input.location.lastData.longitude), new UrlParameterDestination(address));
+            Logger.CategoryLog(LogCategoryMethodOut);
+
+            return ret;
         }
 
         public ResponseDirections GetDirectionsFromCurrentPosition(TransferMode transferMode, float latitude, float longitude)
         {
-            return GetDirections(transferMode, Input.location.lastData.latitude, Input.location.lastData.longitude, new UrlParameterDestination(latitude, longitude));
+            Logger.CategoryLog(LogCategoryMethodIn);
+            ResponseDirections ret = GetDirections(transferMode, new UrlParameterOrigin(Input.location.lastData.latitude, Input.location.lastData.longitude), new UrlParameterDestination(latitude, longitude));
+            Logger.CategoryLog(LogCategoryMethodOut);
+
+            return ret;
         }
 
-        public ResponseDirections GetDirections(TransferMode transferMode, float srcLatitude, float srcLongitude, UrlParameterDestination destParameter)
+        public ResponseDirections GetDirections(TransferMode transferMode, UrlParameterOrigin orgParameter, UrlParameterDestination destParameter)
         {
+            Logger.CategoryLog(LogCategoryMethodIn);
+
             StringBuilder urlBuilder = new StringBuilder(UrlBaseDirections);
             UnityWebRequest request = new UnityWebRequest();
 
@@ -47,12 +70,16 @@ namespace Eq.Unity
             urlBuilder.Append(modeParameter.GetName()).Append("=").Append(modeParameter.GetValue());
 
             // originパラメータ
-            UrlParameterOrigin originParameter = new UrlParameterOrigin(srcLatitude, srcLongitude);
-            urlBuilder.Append(originParameter.GetName()).Append("=").Append(originParameter.GetValue());
+            urlBuilder.Append(orgParameter.GetName()).Append("=").Append(orgParameter.GetValue());
+
+            // destinationパラメータ
+            urlBuilder.Append(destParameter.GetName()).Append("=").Append(destParameter.GetValue());
 
             // languageパラメータ
             UrlParameterLanguage languageParameter = new UrlParameterLanguage();
             urlBuilder.Append(languageParameter.GetName()).Append("=").Append(languageParameter.GetValue());
+
+            Logger.CategoryLog(LogCategoryMethodTrace, "url(without api key parameter) = " + urlBuilder.ToString());
 
             // API key
             UrlParameterAPIKey apiKeyParameter = new UrlParameterAPIKey(mAPIKey);
@@ -79,12 +106,16 @@ namespace Eq.Unity
                     }
                 }
             }
+            Logger.CategoryLog(LogCategoryMethodTrace, "Content-type = " + contentTypeHD + ", recognized charset = " + useEncoding);
 
-            return JsonUtility.FromJson<ResponseDirections>(useEncoding.GetString(content));
+            ResponseDirections ret = JsonUtility.FromJson<ResponseDirections>(useEncoding.GetString(content));
+            Logger.CategoryLog(LogCategoryMethodOut);
+            return ret;
         }
 
-        private byte[] GetContent(UnityWebRequest request)
+        internal byte[] GetContent(UnityWebRequest request)
         {
+            Logger.CategoryLog(LogCategoryMethodIn);
             byte[] ret = null;
 
             request.downloadHandler = new DownloadHandlerBuffer();
@@ -94,17 +125,20 @@ namespace Eq.Unity
                 ret = request.downloadHandler.data;
             }
 
+            Logger.CategoryLog(LogCategoryMethodOut);
             return ret;
         }
 
-        private IEnumerator RunWebRequest(UnityWebRequest request)
+        internal IEnumerator RunWebRequest(UnityWebRequest request)
         {
+            Logger.CategoryLog(LogCategoryMethodIn);
             yield return request.Send();
 
             while (!request.isDone)
             {
                 yield return null;
             }
+            Logger.CategoryLog(LogCategoryMethodOut);
         }
 
         abstract public class UrlParameter
@@ -114,16 +148,22 @@ namespace Eq.Unity
 
             public UrlParameter(string name)
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
                 mName = name;
+                Logger.CategoryLog(LogCategoryMethodOut);
             }
 
             public string GetName()
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
+                Logger.CategoryLog(LogCategoryMethodOut, "name = " + mName);
                 return mName;
             }
 
             public string GetValue()
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
+                Logger.CategoryLog(LogCategoryMethodOut, "value = " + mValue);
                 return mValue;
             }
         }
@@ -132,22 +172,28 @@ namespace Eq.Unity
         {
             public UrlParameterOrigin() : base("origin")
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
                 if (Input.location.lastData.timestamp == 0)
                 {
                     throw new Exception("cannot get location");
                 }
 
                 mValue = Input.location.lastData.latitude + "," + Input.location.lastData.longitude;
+                Logger.CategoryLog(LogCategoryMethodOut, "value = " + mValue);
             }
 
             public UrlParameterOrigin(float srcLatitude, float srcLongitude) : base("origin")
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
                 mValue = srcLatitude.ToString() + "," + srcLongitude.ToString();
+                Logger.CategoryLog(LogCategoryMethodOut, "value = " + mValue);
             }
 
             public UrlParameterOrigin(string address) : base("origin")
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
                 mValue = address;
+                Logger.CategoryLog(LogCategoryMethodOut, "value = " + mValue);
             }
         }
 
@@ -155,11 +201,14 @@ namespace Eq.Unity
         {
             public UrlParameterDestination(float destLatitude, float destLongitude) : base("destination")
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
                 mValue = destLatitude.ToString() + "," + destLongitude.ToString();
+                Logger.CategoryLog(LogCategoryMethodOut, "value = " + mValue);
             }
 
             public UrlParameterDestination(string address) : base("destination")
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
                 mValue = address;
             }
         }
@@ -168,7 +217,9 @@ namespace Eq.Unity
         {
             public UrlParameterAPIKey(string apiKey) : base("key")
             {
+                Logger.CategoryLog(LogCategoryMethodIn);
                 mValue = apiKey;
+                Logger.CategoryLog(LogCategoryMethodOut, "value = XXXXX(not shown)");
             }
         }
 
@@ -180,6 +231,7 @@ namespace Eq.Unity
 
             public UrlParameterLanguage(SystemLanguage systemLanguage) : base("language")
             {
+                Logger.CategoryLog(LogCategoryMethodIn, "language = " + systemLanguage);
                 switch (systemLanguage)
                 {
                     case SystemLanguage.Arabic: // アラビア語
@@ -303,6 +355,7 @@ namespace Eq.Unity
                         mValue = "en";
                         break;
                 }
+                Logger.CategoryLog(LogCategoryMethodOut, "value = " + mValue);
             }
         }
 
@@ -310,7 +363,9 @@ namespace Eq.Unity
         {
             public UrlParameterMode(TransferMode transferMode) : base("mode")
             {
+                Logger.CategoryLog(LogCategoryMethodIn, "transferMode = " + transferMode);
                 mValue = transferMode.ToString().ToLower();
+                Logger.CategoryLog(LogCategoryMethodOut, "value = " + mValue);
             }
         }
     }
