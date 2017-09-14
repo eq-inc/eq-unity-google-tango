@@ -1,3 +1,12 @@
 [submodule "Assets/Scripts/EqUnity"]
 	path = Assets/Scripts/EqUnity
 	url = https://github.com/eq-inc/eq-unity-utility.git
+[submodule "Assets/Scripts/AndroidSDK"]
+	path = Assets/Scripts/AndroidSDK
+	url = https://github.com/thcomp/Unity_AndroidSDKWrapper.git
+[submodule "Assets/Scripts/JavaSDK"]
+	path = Assets/Scripts/JavaSDK
+	url = https://github.com/thcomp/Unity_JavaSDKWrapper.git
+[submodule "Assets/Scripts/GoogleMobileVisionSDK"]
+	path = Assets/Scripts/GoogleMobileVisionSDK
+	url = https://github.com/thcomp/Unity_GoogleMobileVisionSDKWrapper.git

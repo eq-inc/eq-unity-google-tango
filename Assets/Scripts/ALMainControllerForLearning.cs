@@ -45,7 +45,7 @@ public class ALMainControllerForLearning : BaseALMainController, ITangoEvent
         {
             // 停止したときに、領域学習の保存を実施
             CallbackAsncTask<string, int, bool> task = new CallbackAsncTask<string, int, bool>(new SavePoseDataCallback(this));
-            task.EnableDebugLog((mLogger.GetOutputLogCategory() & LogCategoryMethodTrace) == LogCategoryMethodTrace);
+            task.CopyLogController(mLogger);
             task.Execute();
             mLearningArea = false;
         }
