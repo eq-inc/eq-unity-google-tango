@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using Tango;
 using System;
 using System.Collections;
+using UnityEngine;
+using android.graphics;
 
 public class FDMainController : MTMainController, ITangoLifecycle
 {
