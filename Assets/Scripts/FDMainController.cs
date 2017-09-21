@@ -5,10 +5,15 @@ using jp.eq_inc.mobilevisionwrapper;
 using System.Collections.Generic;
 using Tango;
 using System;
+using System.Collections;
 
 public class FDMainController : MTMainController, ITangoLifecycle
 {
+    private static readonly int DetectPerSecond = 30;
+
     private Accessor mAccessor;
+    public GameObject mDetectedGO;
+    private List<GameObject> mShownDetectedMarkList = new List<GameObject>();
 
     internal override void Start()
     {
@@ -23,9 +28,29 @@ public class FDMainController : MTMainController, ITangoLifecycle
         mAccessor.SetOnFaceDetectedDelegater(delegate (List<Face> detectedItemList)
         {
             mLogger.CategoryLog(LogCategoryMethodIn);
+
+            if(mShownDetectedMarkList.Count > 0)
+            {
+                foreach (GameObject detectedMarkGO in mShownDetectedMarkList)
+                {
+                    Destroy(detectedMarkGO);
+                }
+                mShownDetectedMarkList.Clear();
+            }
+
             if (detectedItemList.Count > 0)
             {
                 mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
+
+                Camera mainCamera = Camera.main;
+                for(int i=0; i<detectedItemList.Count; i++)
+                {
+                    PointF faceSp = detectedItemList[i].GetPosition();
+                    Vector3 faceWp = mainCamera.ScreenToWorldPoint(new Vector3(faceSp.x, 0, faceSp.y));
+
+                    GameObject detectedMarkGO = Instantiate(mDetectedGO, faceWp, Quaternion.identity);
+                    detectedMarkGO.SetActive(true);
+                }
             }
             else
             {

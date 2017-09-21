@@ -3,6 +3,7 @@ using com.google.android.gms.vision.face;
 using com.google.android.gms.vision.text;
 using Eq.Unity;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -105,6 +106,7 @@ namespace jp.eq_inc.mobilevisionwrapper
         {
             internal LogController mLogger;
             internal OnDetectedCallback<T> mCallback;
+            private CommonRoutine mRoutine = new CommonRoutine();
 
             public OnDetectedItemListener(LogController logger, OnDetectedCallback<T> callback) : base("jp.eq_inc.mobilevisionwrapper.Accessor$OnDetectedItemListener")
             {
@@ -114,8 +116,14 @@ namespace jp.eq_inc.mobilevisionwrapper
 
             public void onDetected(AndroidJavaObject result)
             {
+                mRoutine.StartCoroutine(OnDetectedOnCoroutine(result));
+            }
+
+            private IEnumerator OnDetectedOnCoroutine(AndroidJavaObject result)
+            {
                 List<T> wrappedItemList = SparseArrayUtil<T>.ExchangeToList(WrapAndroidJavaObject, result);
                 mCallback(wrappedItemList);
+                yield break;
             }
 
             abstract internal T WrapAndroidJavaObject(AndroidJavaObject sourceInstanceJO);
