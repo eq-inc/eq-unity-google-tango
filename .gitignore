@@ -33,7 +33,10 @@ sysinfo.txt
 *.unitypackage
 Assets/TangoSDK/
 Assets/TangoPrefabs/
-Assets/Plugins/
+Assets/Plugins/Android/libs
+Assets/Plugins/Android/google_unity_wrapper*
+Assets/Plugins/Android/support-v4-23.4.0*
+Assets/Plugins/Android/unity_plugin_merged*
 Assets/Google-Unity/
 Assets/TangoPrefabs.meta
 Assets/TangoSDK.meta
