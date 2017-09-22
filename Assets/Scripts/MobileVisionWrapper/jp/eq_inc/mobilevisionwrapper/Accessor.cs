@@ -162,7 +162,14 @@ namespace jp.eq_inc.mobilevisionwrapper
                         }
                     }
 
-                    mOnFaceDetectedDelegater(faceDetectedItemList);
+                    try
+                    {
+                        mOnFaceDetectedDelegater(faceDetectedItemList);
+                    }
+                    catch (Exception e)
+                    {
+                        mLogger.CategoryLog(LogController.LogCategoryMethodError, e);
+                    }
                 }
                 yield return null;
 
@@ -177,7 +184,14 @@ namespace jp.eq_inc.mobilevisionwrapper
                         }
                     }
 
-                    mOnBarcodeDetectedDelegater(barcodeDetectedItemList);
+                    try
+                    {
+                        mOnBarcodeDetectedDelegater(barcodeDetectedItemList);
+                    }
+                    catch (Exception e)
+                    {
+                        mLogger.CategoryLog(LogController.LogCategoryMethodError, e);
+                    }
                 }
                 yield return null;
 
@@ -192,7 +206,14 @@ namespace jp.eq_inc.mobilevisionwrapper
                         }
                     }
 
-                    mOnTextRecognizedDelegater(textRecognizedItemList);
+                    try
+                    {
+                        mOnTextRecognizedDelegater(textRecognizedItemList);
+                    }
+                    catch (Exception e)
+                    {
+                        mLogger.CategoryLog(LogController.LogCategoryMethodError, e);
+                    }
                 }
                 yield return null;
             }

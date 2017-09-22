@@ -46,13 +46,21 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
 
             if ((detectedItemList != null) && (detectedItemList.Count > 0))
             {
-                mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
+                mLogger.CategoryLog(LogCategoryMethodTrace, "face: get detected item list");
 
                 Camera mainCamera = Camera.main;
                 for (int i = 0; i < detectedItemList.Count; i++)
                 {
                     PointF faceSp = detectedItemList[i].GetPosition();
-                    Vector3 faceWp = mainCamera.ScreenToWorldPoint(new Vector3(faceSp.x, 0, faceSp.y));
+                    mLogger.CategoryLog(LogCategoryMethodTrace, "face screen position: " + faceSp.x + ", " + faceSp.y);
+                    Vector3 faceWp = mainCamera.ScreenToWorldPoint(new Vector3(faceSp.x, faceSp.y, 0));
+                    mLogger.CategoryLog(LogCategoryMethodTrace, "face world position: " + faceWp);
+
+                    int nearestPointIndex = mTangoPointCloud.FindClosestPoint(mainCamera, new Vector2(faceWp.x, faceWp.z), 1);
+                    if(nearestPointIndex >= 0)
+                    {
+                        faceWp.y = mTangoPointCloud.m_points[nearestPointIndex].y;
+                    }
 
                     GameObject detectedMarkGO = Instantiate(mDetectedGO, faceWp, Quaternion.identity);
                     detectedMarkGO.SetActive(true);
@@ -67,9 +75,9 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
         mAccessor.SetOnBarcodeDetectedDelegater(delegate (List<Barcode> detectedItemList)
         {
             mLogger.CategoryLog(LogCategoryMethodIn);
-            if (detectedItemList.Count > 0)
+            if ((detectedItemList != null) && (detectedItemList.Count > 0))
             {
-                mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
+                mLogger.CategoryLog(LogCategoryMethodTrace, "barcode: get detected item list");
             }
             else
             {
@@ -80,9 +88,9 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
         mAccessor.SetOnTextRecognizedDelegater(delegate (List<TextBlock> detectedItemList)
         {
             mLogger.CategoryLog(LogCategoryMethodIn);
-            if (detectedItemList.Count > 0)
+            if ((detectedItemList != null) && (detectedItemList.Count > 0))
             {
-                mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
+                mLogger.CategoryLog(LogCategoryMethodTrace, "text: get detected item list");
             }
             else
             {
@@ -106,16 +114,13 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
                             {
                                 if (mGraphicBuffer == null)
                                 {
-                                    mLogger.CategoryLog(LogCategoryMethodTrace, "sleep in");
                                     System.Threading.Monitor.Wait(mDetectTask);
-                                    mLogger.CategoryLog(LogCategoryMethodTrace, "sleep out");
                                 }
 
                                 imageBuffer = mGraphicBuffer;
                                 mGraphicBuffer = null;
                             }
 
-                            mLogger.CategoryLog(LogCategoryMethodTrace, "mShownDetectedMarkList.Count = " + mShownDetectedMarkList.Count);
                             if (mShownDetectedMarkList.Count > 0)
                             {
                                 foreach (GameObject detectedMarkGO in mShownDetectedMarkList)
@@ -125,7 +130,6 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
                                 mShownDetectedMarkList.Clear();
                             }
 
-                            mLogger.CategoryLog(LogCategoryMethodTrace, "imageBuffer = " + imageBuffer);
                             if (imageBuffer != null)
                             {
                                 mAccessor.SetImageBuffer(imageBuffer.data, (int)imageBuffer.format, (int)imageBuffer.width, (int)imageBuffer.height, null);
@@ -181,9 +185,7 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
         lock (mDetectTask)
         {
             mGraphicBuffer = imageBuffer;
-            mLogger.CategoryLog(LogCategoryMethodTrace, "send signal in");
             System.Threading.Monitor.Pulse(mDetectTask);
-            mLogger.CategoryLog(LogCategoryMethodTrace, "send signal out");
         }
 
         mLogger.CategoryLog(LogCategoryMethodOut);
