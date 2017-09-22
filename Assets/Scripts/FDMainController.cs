@@ -1,22 +1,18 @@
 ﻿using android.graphics;
-using com.google.android.gms.vision;
 using com.google.android.gms.vision.barcode;
 using com.google.android.gms.vision.face;
 using com.google.android.gms.vision.text;
+using Eq.Unity;
 using jp.eq_inc.mobilevisionwrapper;
 using System.Collections.Generic;
 using Tango;
 using UnityEngine;
-using System;
-using Eq.Unity;
-using java.io;
 
 public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOverlay
 {
     private static readonly int DetectPerSecond = 30;
 
-    private FaceDetector mFaceDetector;
-    private Frame.Builder mFrameBuilder;
+    private Accessor mAccessor;
     public GameObject mDetectedGO;
     private List<GameObject> mShownDetectedMarkList = new List<GameObject>();
     private DelegateAsyncTask<int, int, int> mDetectTask;
@@ -30,97 +26,120 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
         TangoApplication application = FindObjectOfType<TangoApplication>();
         application.Register(this);
 
-        FaceDetector.Builder faceDetectorBuilder = new FaceDetector.Builder();
-        faceDetectorBuilder.SetClassificationType(FaceDetector.ALL_CLASSIFICATIONS);
-        faceDetectorBuilder.SetLandmarkType(FaceDetector.ALL_LANDMARK);
-        faceDetectorBuilder.SetMode(FaceDetector.ACCURATE_MODE);
-        mFaceDetector = faceDetectorBuilder.Build();
-
-        mFrameBuilder = new Frame.Builder();
-
-        mDetectTask = new DelegateAsyncTask<int, int, int>(delegate (int[] parameters)
+        // Mobile Vision Accessorを生成
+        mAccessor = new Accessor(new CommonRoutine(), mLogger);
+        mAccessor.SetClassificationType(FaceDetector.ALL_CLASSIFICATIONS);
+        mAccessor.SetLandmarkType(FaceDetector.ALL_LANDMARK);
+        mAccessor.SetMode(FaceDetector.ACCURATE_MODE);
+        mAccessor.SetOnFaceDetectedDelegater(delegate (List<Face> detectedItemList)
         {
             mLogger.CategoryLog(LogCategoryMethodIn);
 
-            try
+            if (mShownDetectedMarkList.Count > 0)
             {
-                AndroidJNI.AttachCurrentThread();
-
-                TangoUnityImageData imageBuffer = null;
-                while (!mDetectTask.IsCanceled())
+                foreach (GameObject detectedMarkGO in mShownDetectedMarkList)
                 {
-                    lock (mDetectTask){
-                        if (mGraphicBuffer == null)
-                        {
-                            mLogger.CategoryLog(LogCategoryMethodTrace, "sleep in");
-                            System.Threading.Monitor.Wait(mDetectTask);
-                            mLogger.CategoryLog(LogCategoryMethodTrace, "sleep out");
-                        }
+                    Destroy(detectedMarkGO);
+                }
+                mShownDetectedMarkList.Clear();
+            }
 
-                        imageBuffer = mGraphicBuffer;
-                        mGraphicBuffer = null;
-                    }
+            if ((detectedItemList != null) && (detectedItemList.Count > 0))
+            {
+                mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
 
-                    if (mShownDetectedMarkList.Count > 0)
-                    {
-                        foreach (GameObject detectedMarkGO in mShownDetectedMarkList)
-                        {
-                            Destroy(detectedMarkGO);
-                        }
-                        mShownDetectedMarkList.Clear();
-                    }
+                Camera mainCamera = Camera.main;
+                for (int i = 0; i < detectedItemList.Count; i++)
+                {
+                    PointF faceSp = detectedItemList[i].GetPosition();
+                    Vector3 faceWp = mainCamera.ScreenToWorldPoint(new Vector3(faceSp.x, 0, faceSp.y));
 
-                    if (imageBuffer != null)
-                    {
-                        YuvImage yuvImage = new YuvImage(imageBuffer.data, (int)imageBuffer.format, (int)imageBuffer.width, (int)imageBuffer.height, null);
-
-                        mLogger.CategoryLog(LogCategoryMethodTrace, "yuvImage = " + yuvImage);
-                        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-                        mLogger.CategoryLog(LogCategoryMethodTrace, "outStream = " + outStream);
-                        yuvImage.CompressToJpeg(
-                            new android.graphics.Rect(0, 0, (int)imageBuffer.width, (int)imageBuffer.height),
-                            100,
-                            outStream);
-                        mLogger.CategoryLog(LogCategoryMethodTrace, "yuvImage.CompressToJpeg is finished");
-
-                        byte[] bitmapByteArray = outStream.ToByteArray();
-                        mLogger.CategoryLog(LogCategoryMethodTrace, "bitmapByteArray = " + bitmapByteArray);
-                        Bitmap imageBufferBitmap = BitmapFactory.decodeByteArray(bitmapByteArray, 0, bitmapByteArray.Length, null);
-                        mLogger.CategoryLog(LogCategoryMethodTrace, "imageBufferBitmap = " + imageBufferBitmap);
-
-                        mFrameBuilder.SetBitmap(imageBufferBitmap);
-                        mLogger.CategoryLog(LogCategoryMethodTrace, "imageBufferBitmap is set to frameBuilder");
-
-                        List<Face> detectedList = mFaceDetector.Detect(mFrameBuilder.Build());
-                        if ((detectedList != null) && (detectedList.Count > 0))
-                        {
-                            mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
-
-                            Camera mainCamera = Camera.main;
-                            for (int i = 0; i < detectedList.Count; i++)
-                            {
-                                PointF faceSp = detectedList[i].GetPosition();
-                                Vector3 faceWp = mainCamera.ScreenToWorldPoint(new Vector3(faceSp.x, 0, faceSp.y));
-
-                                GameObject detectedMarkGO = Instantiate(mDetectedGO, faceWp, Quaternion.identity);
-                                detectedMarkGO.SetActive(true);
-                            }
-                        }
-                        else
-                        {
-                            mLogger.CategoryLog(LogCategoryMethodTrace, "oh no----");
-                        }
-                    }
+                    GameObject detectedMarkGO = Instantiate(mDetectedGO, faceWp, Quaternion.identity);
+                    detectedMarkGO.SetActive(true);
                 }
             }
-            finally
+            else
             {
-                AndroidJNI.DetachCurrentThread();
+                mLogger.CategoryLog(LogCategoryMethodTrace, "oh no----");
             }
-
             mLogger.CategoryLog(LogCategoryMethodOut);
-            return 0;
         });
+        mAccessor.SetOnBarcodeDetectedDelegater(delegate (List<Barcode> detectedItemList)
+        {
+            mLogger.CategoryLog(LogCategoryMethodIn);
+            if (detectedItemList.Count > 0)
+            {
+                mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
+            }
+            else
+            {
+                mLogger.CategoryLog(LogCategoryMethodTrace, "oh no----");
+            }
+            mLogger.CategoryLog(LogCategoryMethodOut);
+        });
+        mAccessor.SetOnTextRecognizedDelegater(delegate (List<TextBlock> detectedItemList)
+        {
+            mLogger.CategoryLog(LogCategoryMethodIn);
+            if (detectedItemList.Count > 0)
+            {
+                mLogger.CategoryLog(LogCategoryMethodTrace, "get detected item list");
+            }
+            else
+            {
+                mLogger.CategoryLog(LogCategoryMethodTrace, "oh no----");
+            }
+            mLogger.CategoryLog(LogCategoryMethodOut);
+        });
+
+        mDetectTask = new DelegateAsyncTask<int, int, int>(delegate (int[] parameters)
+                {
+                    mLogger.CategoryLog(LogCategoryMethodIn);
+
+                    try
+                    {
+                        AndroidJNI.AttachCurrentThread();
+
+                        TangoUnityImageData imageBuffer = null;
+                        while (!mDetectTask.IsCanceled())
+                        {
+                            lock (mDetectTask)
+                            {
+                                if (mGraphicBuffer == null)
+                                {
+                                    mLogger.CategoryLog(LogCategoryMethodTrace, "sleep in");
+                                    System.Threading.Monitor.Wait(mDetectTask);
+                                    mLogger.CategoryLog(LogCategoryMethodTrace, "sleep out");
+                                }
+
+                                imageBuffer = mGraphicBuffer;
+                                mGraphicBuffer = null;
+                            }
+
+                            mLogger.CategoryLog(LogCategoryMethodTrace, "mShownDetectedMarkList.Count = " + mShownDetectedMarkList.Count);
+                            if (mShownDetectedMarkList.Count > 0)
+                            {
+                                foreach (GameObject detectedMarkGO in mShownDetectedMarkList)
+                                {
+                                    Destroy(detectedMarkGO);
+                                }
+                                mShownDetectedMarkList.Clear();
+                            }
+
+                            mLogger.CategoryLog(LogCategoryMethodTrace, "imageBuffer = " + imageBuffer);
+                            if (imageBuffer != null)
+                            {
+                                mAccessor.SetImageBuffer(imageBuffer.data, (int)imageBuffer.format, (int)imageBuffer.width, (int)imageBuffer.height, null);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        AndroidJNI.DetachCurrentThread();
+                    }
+
+                    mLogger.CategoryLog(LogCategoryMethodOut);
+                    return 0;
+                });
         mDetectTask.Execute(0);
     }
 
@@ -135,11 +154,7 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
             System.Threading.Monitor.Pulse(mDetectTask);
         }
 
-        if (mFaceDetector != null)
-        {
-            mFaceDetector.Release();
-            mFaceDetector = null;
-        }
+        mAccessor.StopDetect();
 
         mLogger.CategoryLog(LogCategoryMethodOut);
     }
@@ -151,12 +166,12 @@ public class FDMainController : MTMainController, ITangoLifecycle, ITangoVideoOv
 
     public void OnTangoServiceConnected()
     {
-        // 処理なし
+        mAccessor.StartDetect(1000 / DetectPerSecond);
     }
 
     public void OnTangoServiceDisconnected()
     {
-        // 処理なし
+        mAccessor.StopDetect();
     }
 
     public void OnTangoImageAvailableEventHandler(TangoEnums.TangoCameraId cameraId, TangoUnityImageData imageBuffer)

@@ -17,12 +17,43 @@ namespace jp.eq_inc.mobilevisionwrapper
         private OnDetectedCallback<Face> mOnFaceDetectedDelegater;
         private OnDetectedCallback<Barcode> mOnBarcodeDetectedDelegater;
         private OnDetectedCallback<TextBlock> mOnTextRecognizedDelegater;
+        private List<Face> mFaceDetectedItemList;
+        private List<Barcode> mBarcodeDetectedItemList;
+        private List<TextBlock> mTextRecognizedItemList;
+        private CommonRoutine mRoutine;
+        private Boolean mDetecting = false;
 
-        public Accessor(LogController logger)
+        public Accessor(CommonRoutine routine, LogController logger)
         {
+            mRoutine = routine;
             mLogger = logger;
+
             AndroidJavaClass accessor = new AndroidJavaClass("jp.eq_inc.mobilevisionwrapper.Accessor");
             mAndroidJO = accessor.CallStatic<AndroidJavaObject>("createAccessorForUnity", AndroidHelper.GetUnityActivity());
+        }
+
+        private void OnFaceDetectedCallback(List<Face> detectedItemList)
+        {
+            lock (this)
+            {
+                mFaceDetectedItemList = detectedItemList;
+            }
+        }
+
+        private void OnBarcodeDetectedCallback(List<Barcode> detectedItemList)
+        {
+            lock (this)
+            {
+                mBarcodeDetectedItemList = detectedItemList;
+            }
+        }
+
+        private void OnTextRecognizedCallback(List<TextBlock> detectedItemList)
+        {
+            lock (this)
+            {
+                mTextRecognizedItemList = detectedItemList;
+            }
         }
 
         public void SetOnFaceDetectedDelegater(OnDetectedCallback<Face> delegater)
@@ -75,23 +106,31 @@ namespace jp.eq_inc.mobilevisionwrapper
             mAndroidJO.Call("setBarcodeFormats", format);
         }
 
+        public void SetImageBuffer(byte[] imageBuffer, int imageFormat, int imageWidth, int imageHeight, int[] imageStride)
+        {
+            mAndroidJO.Call("setImageBuffer", imageBuffer, imageFormat, imageWidth, imageHeight, imageStride);
+        }
+
         public void StartDetect(int intervalMS)
         {
+            mDetecting = true;
+            mRoutine.StartCoroutine(Looper());
+
             OnFaceDetectedItemListener faceDetectedListener = null;
             OnBarcodeDetectedItemListener barcodeDetectedListener = null;
             OnTextRecognizedItemListener textRecognizedListener = null;
 
             if(mOnFaceDetectedDelegater != null)
             {
-                faceDetectedListener = new OnFaceDetectedItemListener(mLogger, mOnFaceDetectedDelegater);
+                faceDetectedListener = new OnFaceDetectedItemListener(mLogger, OnFaceDetectedCallback);
             }
             if (mOnBarcodeDetectedDelegater != null)
             {
-                barcodeDetectedListener = new OnBarcodeDetectedItemListener(mLogger, mOnBarcodeDetectedDelegater);
+                barcodeDetectedListener = new OnBarcodeDetectedItemListener(mLogger, OnBarcodeDetectedCallback);
             }
             if (mOnTextRecognizedDelegater != null)
             {
-                textRecognizedListener = new OnTextRecognizedItemListener(mLogger, mOnTextRecognizedDelegater);
+                textRecognizedListener = new OnTextRecognizedItemListener(mLogger, OnTextRecognizedCallback);
             }
 
             mAndroidJO.Call("startDetect", intervalMS, faceDetectedListener, barcodeDetectedListener, textRecognizedListener);
@@ -99,14 +138,70 @@ namespace jp.eq_inc.mobilevisionwrapper
 
         public void StopDetect()
         {
+            mDetecting = false;
+            mRoutine.DestroyComponent();
             mAndroidJO.Call("stopDetect");
+        }
+
+        private IEnumerator Looper()
+        {
+            List<Face> faceDetectedItemList;
+            List<Barcode> barcodeDetectedItemList;
+            List<TextBlock> textRecognizedItemList;
+
+            while (mDetecting)
+            {
+                if(mOnFaceDetectedDelegater != null)
+                {
+                    lock (this)
+                    {
+                        faceDetectedItemList = mFaceDetectedItemList;
+                        if (faceDetectedItemList != null)
+                        {
+                            mFaceDetectedItemList = null;
+                        }
+                    }
+
+                    mOnFaceDetectedDelegater(faceDetectedItemList);
+                }
+                yield return null;
+
+                if (mOnBarcodeDetectedDelegater != null)
+                {
+                    lock (this)
+                    {
+                        barcodeDetectedItemList = mBarcodeDetectedItemList;
+                        if (barcodeDetectedItemList != null)
+                        {
+                            mBarcodeDetectedItemList = null;
+                        }
+                    }
+
+                    mOnBarcodeDetectedDelegater(barcodeDetectedItemList);
+                }
+                yield return null;
+
+                if (mOnTextRecognizedDelegater != null)
+                {
+                    lock (this)
+                    {
+                        textRecognizedItemList = mTextRecognizedItemList;
+                        if (textRecognizedItemList != null)
+                        {
+                            mTextRecognizedItemList = null;
+                        }
+                    }
+
+                    mOnTextRecognizedDelegater(textRecognizedItemList);
+                }
+                yield return null;
+            }
         }
 
         abstract internal class OnDetectedItemListener<T> : AndroidJavaProxy
         {
             internal LogController mLogger;
             internal OnDetectedCallback<T> mCallback;
-            private CommonRoutine mRoutine = new CommonRoutine();
 
             public OnDetectedItemListener(LogController logger, OnDetectedCallback<T> callback) : base("jp.eq_inc.mobilevisionwrapper.Accessor$OnDetectedItemListener")
             {
@@ -116,14 +211,8 @@ namespace jp.eq_inc.mobilevisionwrapper
 
             public void onDetected(AndroidJavaObject result)
             {
-                mRoutine.StartCoroutine(OnDetectedOnCoroutine(result));
-            }
-
-            private IEnumerator OnDetectedOnCoroutine(AndroidJavaObject result)
-            {
                 List<T> wrappedItemList = SparseArrayUtil<T>.ExchangeToList(WrapAndroidJavaObject, result);
                 mCallback(wrappedItemList);
-                yield break;
             }
 
             abstract internal T WrapAndroidJavaObject(AndroidJavaObject sourceInstanceJO);
