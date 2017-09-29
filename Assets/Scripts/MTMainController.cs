@@ -22,7 +22,7 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
         SetScreenOrientation(ScreenOrientation.Portrait);
 
         // 今はコールバックが不要なので、コメントアウト
-        //FindObjectOfType<TangoApplication>().Register(this);
+        FindObjectOfType<TangoApplication>().Register(this);
         //     or
         //PoseListener.RegisterTangoPoseAvailable(new OnTangoPoseAvailableEventHandler(OnTangoPoseAvailable));
 
@@ -35,7 +35,7 @@ public class MTMainController : BaseAndroidMainController, ITangoPose
         base.OnDisable();
 
         // 今はコールバックが不要なので、コメントアウト
-        //FindObjectOfType<TangoApplication>().Unregister(this);
+        FindObjectOfType<TangoApplication>().Unregister(this);
         //     or
         //PoseListener.UnregisterTangoPoseAvailable(new OnTangoPoseAvailableEventHandler(OnTangoPoseAvailable));
 
